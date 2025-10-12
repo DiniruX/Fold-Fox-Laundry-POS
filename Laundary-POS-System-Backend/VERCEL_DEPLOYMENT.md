@@ -4,8 +4,8 @@
 
 The backend has been configured to work with Vercel's serverless architecture. Here are the key changes:
 
-1. **Created `index.js`** - Serverless entry point that exports the Express app
-2. **Updated `vercel.json`** - Configured builds and routes for serverless deployment
+1. **Created `api/index.js`** - Serverless entry point that exports the Express app (Vercel's recommended structure)
+2. **Updated `vercel.json`** - Configured rewrites to route all requests to the api folder
 3. **Updated `database.js`** - Optimized MongoDB connection for serverless (connection reuse)
 4. **Created `.vercelignore`** - Excludes unnecessary files from deployment
 
