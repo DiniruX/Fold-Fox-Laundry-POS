@@ -1,0 +1,105 @@
+/* App-specific styles */
+.App {
+  text-align: left;
+}
+
+/* Loading states */
+.loading-container {
+  @apply flex items-center justify-center min-h-screen;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600;
+}
+
+/* Error states */
+.error-container {
+  @apply rounded-md bg-red-50 p-4;
+}
+
+.error-message {
+  @apply text-sm text-red-700;
+}
+
+.success-container {
+  @apply rounded-md bg-green-50 p-4;
+}
+
+.success-message {
+  @apply text-sm text-green-700;
+}
+
+/* Empty states */
+.empty-state {
+  @apply text-center py-12;
+}
+
+.empty-state-icon {
+  @apply mx-auto h-12 w-12 text-gray-400;
+}
+
+.empty-state-title {
+  @apply mt-2 text-sm font-medium text-gray-900;
+}
+
+.empty-state-description {
+  @apply mt-1 text-sm text-gray-500;
+}
+
+/* Focus states for accessibility */
+.focus-visible {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+/* Custom transitions */
+.transition-all {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Responsive text sizes */
+@media (max-width: 640px) {
+  .text-responsive-xl {
+    @apply text-2xl;
+  }
+  
+  .text-responsive-lg {
+    @apply text-xl;
+  }
+  
+  .text-responsive-md {
+    @apply text-lg;
+  }
+}
+
+@media (min-width: 641px) {
+  .text-responsive-xl {
+    @apply text-3xl;
+  }
+  
+  .text-responsive-lg {
+    @apply text-2xl;
+  }
+  
+  .text-responsive-md {
+    @apply text-xl;
+  }
+}
+
+/* Print-friendly styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  
+  .print-visible {
+    display: block !important;
+  }
+  
+  body {
+    @apply text-black bg-white;
+  }
+  
+  .card {
+    @apply border border-gray-400 shadow-none;
+  }
+}

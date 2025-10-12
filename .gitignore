@@ -1,0 +1,329 @@
+# ==========================================
+# Laundry POS System - Complete .gitignore
+# Covers both Backend and Frontend
+# ==========================================
+
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+*/node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ==========================================
+# Environment Variables
+# ==========================================
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+*.env
+!env.example
+
+# ==========================================
+# Build Outputs
+# ==========================================
+# Backend
+dist/
+build/
+out/
+
+# Frontend (React)
+Laundary-POS-System-Frontend/build/
+Laundary-POS-System-Frontend/dist/
+*.bundle.js
+*.bundle.js.map
+
+# Production builds
+/build
+/dist
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# ==========================================
+# Runtime & Temporary Files
+# ==========================================
+pids/
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
+.tmp/
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+coverage/
+*.lcov
+.nyc_output
+junit.xml
+test-results/
+.jest-cache/
+
+# ==========================================
+# Uploads & User Generated Content
+# ==========================================
+uploads/
+Laundary-POS-System-Backend/uploads/
+*.pdf
+!**/public/**/*.pdf
+
+# ==========================================
+# Cache & Build Tools
+# ==========================================
+.cache/
+.parcel-cache/
+.vite/
+.webpack/
+.fusebox/
+.eslintcache
+.stylelintcache
+
+# ==========================================
+# IDE & Editor Files
+# ==========================================
+# VSCode
+.vscode/
+.vscode-test/
+*.code-workspace
+
+# JetBrains IDEs (WebStorm, IntelliJ, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+.*.sw[a-p]
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ==========================================
+# OS Generated Files
+# ==========================================
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# Linux
+.directory
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# ==========================================
+# Frontend Specific (React)
+# ==========================================
+# Production build
+Laundary-POS-System-Frontend/build/
+Laundary-POS-System-Frontend/.cache/
+
+# React specific
+.eslintcache
+tsconfig.tsbuildinfo
+
+# Source maps (optional - uncomment to ignore)
+# *.map
+
+# ==========================================
+# Backend Specific (Node.js/Express)
+# ==========================================
+# Serverless
+.serverless/
+.serverless_nextjs/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# ==========================================
+# Package Manager Specific
+# ==========================================
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# npm
+.npm/
+package-lock.json
+
+# pnpm
+.pnpm-store/
+pnpm-lock.yaml
+
+# ==========================================
+# Testing
+# ==========================================
+.jest/
+coverage/
+.nyc_output/
+
+# ==========================================
+# Misc
+# ==========================================
+# Lock files from different sources
+*.lock
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# TypeScript
+*.tsbuildinfo
+
+# TypeScript cache
+*.tscache
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+dist/
+
+# Gatsby
+.cache/
+public/
+
+# Storybook
+storybook-static/
+
+# ==========================================
+# Security & Secrets
+# ==========================================
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+.secrets/
+
+# ==========================================
+# Backup Files
+# ==========================================
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# ==========================================
+# Documentation Build
+# ==========================================
+docs/_build/
+site/
+
+# ==========================================
+# Keep These Files
+# ==========================================
+# Environment examples
+!env.example
+!.env.example
+
+# Public assets
+!public/
+!**/public/**
+
+# Documentation
+!*.md
+!README.md
+!CHANGELOG.md
+!LICENSE
+
+# Config files
+!*.config.js
+!*.config.json
+
+# ==========================================
+# Project Specific
+# ==========================================
+# Keep documentation files at root
+!/*.md
+
+# Ignore temporary markdown files (if any)
+temp*.md
+draft*.md
+

@@ -1,0 +1,714 @@
+import React, { useState, useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useCreateOrder, useUpdateOrder } from '../../services/orderService';
+import {
+  CLOTHING_CATEGORIES,
+} from '../../constants';
+import {
+  getClothingCategoryLabel,
+  useServices,
+} from '../../services/serviceService';
+import {
+  getOrderTypeLabel,
+} from '../../services/orderService';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
+import Modal from '../ui/Modal';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import CustomerSearch from './CustomerSearch';
+
+const OrderForm = ({ isOpen, onClose, onSuccess, order = null, preSelectedCustomer = null }) => {
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(preSelectedCustomer || null);
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const isEditing = !!order;
+  const title = isEditing ? 'Edit Order' : 'Create New Order';
+  
+  const steps = [
+    { number: 1, title: 'Customer', description: 'Select customer' },
+    { number: 2, title: 'Services', description: 'Add order items' },
+    { number: 3, title: 'Delivery', description: 'Pickup & delivery options' },
+    { number: 4, title: 'Review', description: 'Confirm order details' },
+  ];
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+        defaultValues: {
+          customerId: '',
+          items: [
+            {
+              serviceId: '',
+              quantity: 1,
+              weight: 0,
+              clothingCategory: 'normal_clothes',
+              notes: '',
+            },
+          ],
+          pickupRequired: false,
+          pickupAddress: {
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            notes: '',
+          },
+          deliveryRequired: false,
+          deliveryAddress: {
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            notes: '',
+          },
+          specialInstructions: '',
+          tags: [],
+        },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'items',
+  });
+
+  const watchedPickupRequired = watch('pickupRequired');
+  const watchedDeliveryRequired = watch('deliveryRequired');
+
+  const createOrderMutation = useCreateOrder();
+  const updateOrderMutation = useUpdateOrder();
+
+  // Fetch services for dropdown
+  const { data: servicesResponse } = useServices();
+  const services = servicesResponse?.services || [];
+
+  // Handle pre-selected customer
+  useEffect(() => {
+    if (preSelectedCustomer && !order) {
+      setSelectedCustomer(preSelectedCustomer);
+      setValue('customerId', preSelectedCustomer._id);
+      // Auto-advance to step 2 since customer is pre-selected
+      setCurrentStep(2);
+    }
+  }, [preSelectedCustomer, order, setValue]);
+
+  // Reset form when order changes
+  useEffect(() => {
+        if (order) {
+          reset({
+            customerId: order.customer?._id || '',
+            items: order.items?.map(item => ({
+              serviceId: item.service?._id || '',
+              quantity: item.quantity || 1,
+              weight: item.weight || 0,
+              clothingCategory: item.clothingCategory || 'normal_clothes',
+              notes: item.notes || '',
+            })) || [],
+            pickupRequired: order.pickupRequired || false,
+            pickupAddress: order.pickupAddress || {},
+            deliveryRequired: order.deliveryRequired || false,
+            deliveryAddress: order.deliveryAddress || {},
+            specialInstructions: order.specialInstructions || '',
+            tags: order.tags || [],
+          });
+          setSelectedCustomer(order.customer);
+        } else if (!preSelectedCustomer) {
+          reset({
+            customerId: '',
+            items: [
+              {
+                serviceId: '',
+                quantity: 1,
+                weight: 0,
+                clothingCategory: 'normal_clothes',
+                notes: '',
+              },
+            ],
+            pickupRequired: false,
+            pickupAddress: {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              notes: '',
+            },
+            deliveryRequired: false,
+            deliveryAddress: {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              notes: '',
+            },
+            specialInstructions: '',
+            tags: [],
+          });
+          setSelectedCustomer(null);
+          setCurrentStep(1);
+        }
+  }, [order, preSelectedCustomer, reset, setValue]);
+
+  // Auto-populate address when customer is selected
+  useEffect(() => {
+    if (selectedCustomer && selectedCustomer.address) {
+      const address = selectedCustomer.address;
+      setValue('pickupAddress', address);
+      setValue('deliveryAddress', address);
+    }
+  }, [selectedCustomer, setValue]);
+
+  // Handle form submission
+  const onSubmit = async (data) => {
+    try {
+      const submitData = {
+        ...data,
+        items: data.items.map(item => ({
+          serviceId: item.serviceId,
+          quantity: item.quantity ? parseInt(item.quantity) : 1,
+          weight: item.weight ? parseFloat(item.weight) : 0,
+          clothingCategory: item.clothingCategory,
+          notes: item.notes,
+        })),
+        // Explicitly convert to boolean to ensure proper type
+        pickupRequired: Boolean(data.pickupRequired),
+        deliveryRequired: Boolean(data.deliveryRequired),
+      };
+
+      console.log('[OrderForm] Submitting order with:', {
+        pickupRequired: submitData.pickupRequired,
+        deliveryRequired: submitData.deliveryRequired,
+        pickupRequiredType: typeof submitData.pickupRequired,
+      });
+
+      // Only use existing customer - customerId is required
+      if (!data.customerId) {
+        throw new Error('Please select a customer');
+      }
+
+      if (isEditing) {
+        await updateOrderMutation.mutateAsync({
+          id: order._id,
+          data: submitData,
+        });
+      } else {
+        await createOrderMutation.mutateAsync(submitData);
+      }
+      onSuccess();
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  // Add new item
+  const addItem = () => {
+    append({
+      serviceId: '',
+      quantity: 1,
+      weight: 0,
+      clothingCategory: 'normal_clothes',
+      notes: '',
+    });
+  };
+
+  // Remove item
+  const removeItem = (index) => {
+    if (fields.length > 1) {
+      remove(index);
+    }
+  };
+
+  // Get service details for pricing calculation
+  const getServiceDetails = (serviceId) => {
+    return services.find(service => service._id === serviceId);
+  };
+
+  const isLoading = createOrderMutation.isPending || updateOrderMutation.isPending;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">
+      <div className="space-y-6">
+        {/* Step Progress Indicator */}
+        <div className="border-b border-gray-200 pb-6">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div 
+                    className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
+                      currentStep === step.number
+                        ? 'text-white shadow-lg'
+                        : currentStep > step.number
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-400'
+                    }`}
+                    style={currentStep === step.number ? { backgroundColor: '#fe7f2d' } : {}}
+                  >
+                    {currentStep > step.number ? '✓' : step.number}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <p className={`text-xs font-semibold ${
+                      currentStep === step.number ? 'text-gray-900' : 'text-gray-500'
+                    }`}>
+                      {step.title}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{step.description}</p>
+                  </div>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`h-1 flex-1 mx-2 rounded ${
+                    currentStep > step.number ? 'bg-green-300' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Step 1: Customer Selection */}
+          {currentStep === 1 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex items-center space-x-3 pb-3 border-b-2 border-orange-200">
+                <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ backgroundColor: '#fe7f2d' }}>
+                  1
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Select Customer</h3>
+                  <p className="text-xs text-gray-500">Choose the customer for this order</p>
+                </div>
+              </div>
+          
+          <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search Customer</label>
+            <CustomerSearch
+              onSelectCustomer={(customer) => {
+                setSelectedCustomer(customer);
+                setValue('customerId', customer?._id || '');
+              }}
+              selectedCustomer={selectedCustomer}
+            />
+            {!selectedCustomer && (
+                  <p className="mt-2 text-sm text-red-600">⚠️ Please select a customer to continue</p>
+                )}
+                {selectedCustomer && (
+                  <div className="mt-4 space-y-3">
+                    <div className="p-4 bg-green-50 border-2 border-green-200 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-green-900">✓ Customer Selected</p>
+                          <p className="text-xs text-green-700 mt-1">
+                            {selectedCustomer.fullName} • {selectedCustomer.phoneNumber}
+                          </p>
+                          {selectedCustomer.loyaltyPoints > 0 && (
+                            <p className="text-xs text-green-600 mt-1">
+                              ⭐ {selectedCustomer.loyaltyPoints} loyalty points
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          className="px-4 py-2 text-sm font-medium rounded-lg text-white shadow-sm hover:shadow-md transition-all"
+                          style={{ backgroundColor: '#fe7f2d' }}
+                        >
+                          Continue →
+                        </button>
+                      </div>
+                    </div>
+                    {selectedCustomer.isStudent && (
+                      <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-xl animate-fadeIn">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className="text-white text-xl">🎓</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-blue-900">Student Discount Available!</p>
+                            <p className="text-xs text-blue-700 mt-1">
+                              This customer will receive a <span className="font-bold">10% discount</span> on their order total
+                            </p>
+                            {selectedCustomer.campusId && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Campus ID: {selectedCustomer.campusId}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Service Selection */}
+          {currentStep === 2 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-blue-200">
+                <div className="flex items-center space-x-3">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold text-white bg-blue-500">
+                    2
+                  </div>
+          <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Add Services</h3>
+                    <p className="text-xs text-gray-500">Select laundry services and quantities</p>
+          </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  ← Back
+                </button>
+        </div>
+
+        {/* Order Items */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-700">Service Items</h4>
+            <Button
+              type="button"
+              variant="outline"
+                    size="sm"
+              onClick={addItem}
+              className="flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
+
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+            {fields.map((field, index) => {
+              const service = getServiceDetails(watch(`items.${index}.serviceId`));
+              return (
+                      <div key={field.id} className="border-2 border-gray-200 rounded-xl p-4 bg-white hover:border-blue-300 transition-colors">
+                  <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-sm font-semibold text-gray-900">Item {index + 1}</h4>
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+                      <select
+                        {...register(`items.${index}.serviceId`, { required: 'Service is required' })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value="">Select a service</option>
+                        {services.map((service) => (
+                          <option key={service._id} value={service._id}>
+                                  {service.name} - LKR {service.basePrice}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.items?.[index]?.serviceId && (
+                        <p className="mt-1 text-sm text-red-600">{errors.items[index].serviceId.message}</p>
+                      )}
+                    </div>
+
+                    {service?.priceType === 'per_kg' ? (
+                      <div>
+                        <Input
+                          label="Weight (kg)"
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          {...register(`items.${index}.weight`, {
+                            required: 'Weight is required',
+                            min: { value: 0.1, message: 'Weight must be at least 0.1 kg' },
+                            valueAsNumber: true
+                          })}
+                          error={errors.items?.[index]?.weight?.message}
+                          placeholder="Enter weight in kg"
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <Input
+                          label="Quantity"
+                          type="number"
+                          min="1"
+                          {...register(`items.${index}.quantity`, {
+                            required: 'Quantity is required',
+                            min: { value: 1, message: 'Quantity must be at least 1' },
+                            valueAsNumber: true
+                          })}
+                          error={errors.items?.[index]?.quantity?.message}
+                          placeholder="1"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {(service?.priceType === 'per_piece' || service?.priceType === 'per_kg') && (
+                            <div className="lg:col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Clothing Category {service?.priceType === 'per_kg' ? '(price per kg)' : '(price per piece)'}
+                        </label>
+                        <select
+                          {...register(`items.${index}.clothingCategory`)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        >
+                          {Object.entries(CLOTHING_CATEGORIES).map(([key, value]) => (
+                            <option key={key} value={value}>
+                              {getClothingCategoryLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                          <div className="lg:col-span-3">
+                      <Input
+                              label="Item Notes (Optional)"
+                        {...register(`items.${index}.notes`)}
+                        error={errors.items?.[index]?.notes?.message}
+                              placeholder="e.g., Handle with care, Remove stains"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Price Preview */}
+                  {service && (
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-blue-700 font-medium">{service.name}</span>
+                                <span className="text-blue-600 text-xs">
+                                  {service.priceType === 'per_kg' ? 'Per Kilogram' : 'Per Piece'}
+                                </span>
+                              </div>
+                              {(() => {
+                                const selectedCategory = watch(`items.${index}.clothingCategory`) || 'normal_clothes';
+                                const categoryPrice = service.clothingPrices?.get?.(selectedCategory) || 
+                                                     service.clothingPrices?.[selectedCategory] || 0;
+                                const weight = parseFloat(watch(`items.${index}.weight`)) || 0;
+                                const quantity = parseInt(watch(`items.${index}.quantity`)) || 1;
+                                const total = service.priceType === 'per_kg' 
+                                  ? categoryPrice * weight 
+                                  : categoryPrice * quantity;
+                                
+                                return (
+                                  <div className="space-y-1 pt-2 border-t border-blue-200">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-blue-600">
+                                        Category: {getClothingCategoryLabel(selectedCategory)}
+                                      </span>
+                                      <span className="text-blue-900 font-semibold">
+                                        LKR {categoryPrice} / {service.priceType === 'per_kg' ? 'kg' : 'piece'}
+                                      </span>
+                                    </div>
+                                    {service.priceType === 'per_kg' && weight > 0 && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-blue-600">
+                                          {weight} kg × LKR {categoryPrice}
+                                        </span>
+                                        <span className="text-green-700 font-bold">
+                                          = LKR {total.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {service.priceType === 'per_piece' && quantity > 0 && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-blue-600">
+                                          {quantity} piece(s) × LKR {categoryPrice}
+                                        </span>
+                                        <span className="text-green-700 font-bold">
+                                          = LKR {total.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-4 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentStep(1)}
+                >
+                  ← Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  disabled={fields.length === 0 || !watch('items.0.serviceId')}
+                  style={{ backgroundColor: '#fe7f2d', color: 'white' }}
+                >
+                  Continue to Delivery →
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Pickup & Delivery */}
+          {currentStep === 3 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between pb-3 border-b-2 border-purple-200">
+                <div className="flex items-center space-x-3">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold text-white bg-purple-500">
+                    3
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Pickup & Delivery</h3>
+                    <p className="text-xs text-gray-500">Configure pickup and delivery options</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="pickupRequired"
+                    {...register('pickupRequired')}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="pickupRequired" className="ml-3 block text-sm font-semibold text-gray-700">
+                    📦 Pickup Required
+                  </label>
+                </div>
+                <div className="flex items-center p-4 border-2 border-gray-200 rounded-xl hover:border-green-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="deliveryRequired"
+                    {...register('deliveryRequired')}
+                    className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="deliveryRequired" className="ml-3 block text-sm font-semibold text-gray-700">
+                    🚚 Delivery Required
+                  </label>
+                </div>
+              </div>
+
+              {/* Pickup Address */}
+              {watchedPickupRequired && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                  <h4 className="text-md font-semibold text-blue-900 mb-3">Pickup Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Street"
+                      {...register('pickupAddress.street', { required: watchedPickupRequired ? 'Street is required' : false })}
+                      error={errors.pickupAddress?.street?.message}
+                      placeholder="Street address"
+                    />
+                    <Input
+                      label="City"
+                      {...register('pickupAddress.city', { required: watchedPickupRequired ? 'City is required' : false })}
+                      error={errors.pickupAddress?.city?.message}
+                      placeholder="City"
+                    />
+                    <Input
+                      label="State"
+                      {...register('pickupAddress.state', { required: watchedPickupRequired ? 'State is required' : false })}
+                      error={errors.pickupAddress?.state?.message}
+                      placeholder="State"
+                    />
+                    <Input
+                      label="ZIP Code"
+                      {...register('pickupAddress.zipCode', { required: watchedPickupRequired ? 'ZIP is required' : false })}
+                      error={errors.pickupAddress?.zipCode?.message}
+                      placeholder="ZIP code"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery Address */}
+              {watchedDeliveryRequired && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                  <h4 className="text-md font-semibold text-green-900 mb-3">Delivery Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Street"
+                      {...register('deliveryAddress.street', { required: watchedDeliveryRequired ? 'Street is required' : false })}
+                      error={errors.deliveryAddress?.street?.message}
+                      placeholder="Street address"
+                    />
+                    <Input
+                      label="City"
+                      {...register('deliveryAddress.city', { required: watchedDeliveryRequired ? 'City is required' : false })}
+                      error={errors.deliveryAddress?.city?.message}
+                      placeholder="City"
+                    />
+                    <Input
+                      label="State"
+                      {...register('deliveryAddress.state', { required: watchedDeliveryRequired ? 'State is required' : false })}
+                      error={errors.deliveryAddress?.state?.message}
+                      placeholder="State"
+                    />
+                    <Input
+                      label="ZIP Code"
+                      {...register('deliveryAddress.zipCode', { required: watchedDeliveryRequired ? 'ZIP is required' : false })}
+                      error={errors.deliveryAddress?.zipCode?.message}
+                      placeholder="ZIP code"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Input
+                  label="Special Instructions (Optional)"
+                  {...register('specialInstructions')}
+                  error={errors.specialInstructions?.message}
+                  placeholder="Any special instructions for this order"
+                />
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-4 border-t border-gray-200">
+          <Button
+            type="button"
+            variant="outline"
+                  onClick={() => setCurrentStep(2)}
+          >
+                  ← Back to Services
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="flex items-center"
+                  style={{ backgroundColor: '#fe7f2d', color: 'white' }}
+          >
+            {isLoading && <LoadingSpinner size="sm" className="mr-2" />}
+                  {isEditing ? '✓ Update Order' : '✓ Create Order'}
+          </Button>
+        </div>
+            </div>
+          )}
+      </form>
+      </div>
+    </Modal>
+  );
+};
+
+export default OrderForm;
