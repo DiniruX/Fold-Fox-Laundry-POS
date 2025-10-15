@@ -170,13 +170,13 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-between h-20 px-6 border-b border-white/10">
             <div className="flex items-center space-x-3">
               <img
-                src="/images/FFLogo.png"
+                src="/images/FFLogo.webp"
                 alt="Fox Fold Logo"
                 className="h-12 w-12 rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-200 object-contain bg-white/5 p-1.5"
               />
               <div>
                 <span className="text-lg font-bold text-white block leading-tight">
-                  Fox Fold
+                  Fold Fox
                 </span>
                 <span className="text-xs font-medium text-white/60">
                   {isAdmin() ? 'Admin Portal' : 'Cashier Terminal'}

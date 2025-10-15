@@ -222,7 +222,7 @@ const Dashboard = () => {
         <div 
           className="absolute inset-0 opacity-20"
           style={{
-            backgroundImage: 'url("/images/laundry-background.jpg")',
+            backgroundImage: 'url("/images/laundry-background.webp")',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

@@ -615,6 +615,264 @@ ${process.env.BUSINESS_EMAIL ? '\nEmail: ' + process.env.BUSINESS_EMAIL : ''}`;
   }
 };
 
+/**
+ * Send receipt email to customer
+ * @param {object} params - Parameters
+ * @param {string} params.email - Customer email
+ * @param {string} params.orderNumber - Order number
+ * @param {string} params.customerName - Customer name
+ * @param {object} params.order - Full order object
+ * @returns {Promise<object>} - Result of email sending
+ */
+const sendReceipt = async ({ email, orderNumber, customerName, order }) => {
+  try {
+    if (!email || email.trim() === '') {
+      return {
+        success: false,
+        message: 'Email address is required'
+      };
+    }
+
+    const businessName = process.env.BUSINESS_NAME || 'Fold Fox Laundry';
+    const businessAddress = process.env.BUSINESS_ADDRESS || '123 Main Street, Colombo 01, Sri Lanka';
+    const businessPhone = process.env.BUSINESS_PHONE || '+94 11 234 5678';
+    const businessEmail = process.env.BUSINESS_EMAIL || 'info@foldfoxlaundry.com';
+    const currency = process.env.CURRENCY || 'LKR';
+
+    // Format date
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    // Format currency
+    const formatAmount = (amount) => {
+      return `${currency} ${parseFloat(amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    // Build items HTML
+    let itemsHTML = '';
+    if (order.items && order.items.length > 0) {
+      itemsHTML = order.items.map(item => `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.serviceName || 'Service'}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+            ${item.weight > 0 ? `${item.weight} kg` : `${item.quantity} pc`}
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatAmount(item.unitPrice)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatAmount(item.totalPrice)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Build payment history HTML
+    let paymentHistoryHTML = '';
+    if (order.payments && order.payments.length > 0) {
+      paymentHistoryHTML = `
+        <div style="margin-top: 20px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #374151;">Payment History</h3>
+          ${order.payments.map(payment => `
+            <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px;">
+              <span>${payment.method?.charAt(0).toUpperCase()}${payment.method?.slice(1)} (${formatDate(payment.createdAt || payment.processedAt)})</span>
+              <span>${formatAmount(payment.amount)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // HTML email template
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Receipt - ${orderNumber}</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; padding: 30px;">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #3b82f6;">
+      <h1 style="color: #3b82f6; font-size: 24px; margin: 0 0 10px 0;">${businessName}</h1>
+      <p style="margin: 5px 0; font-size: 13px; color: #6b7280;">
+        ${businessAddress}<br>
+        Phone: ${businessPhone}<br>
+        Email: ${businessEmail}
+      </p>
+    </div>
+
+    <!-- Receipt Title -->
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #1f2937; font-size: 20px; margin: 0;">RECEIPT</h2>
+    </div>
+
+    <!-- Receipt & Customer Info -->
+    <div style="background-color: white; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: 600;">Receipt No:</span>
+        <span>${orderNumber}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: 600;">Date:</span>
+        <span>${formatDate(order.createdAt)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: 600;">Customer:</span>
+        <span>${customerName}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span style="font-weight: 600;">Status:</span>
+        <span style="color: #10b981; font-weight: 600;">${order.status?.toUpperCase()}</span>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div style="margin-bottom: 25px;">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #374151;">Order Items</h3>
+      <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 6px; overflow: hidden;">
+        <thead>
+          <tr style="background-color: #f3f4f6;">
+            <th style="padding: 10px 8px; text-align: left; font-size: 13px; color: #6b7280; font-weight: 600;">Service</th>
+            <th style="padding: 10px 8px; text-align: center; font-size: 13px; color: #6b7280; font-weight: 600;">Qty/Weight</th>
+            <th style="padding: 10px 8px; text-align: right; font-size: 13px; color: #6b7280; font-weight: 600;">Unit Price</th>
+            <th style="padding: 10px 8px; text-align: right; font-size: 13px; color: #6b7280; font-weight: 600;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHTML}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totals -->
+    <div style="background-color: white; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px;">
+        <span>Subtotal:</span>
+        <span>${formatAmount(order.subtotal)}</span>
+      </div>
+      ${order.isExpressService && order.expressServiceFee > 0 ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #3b82f6;">
+        <span>Express Service (1 Day):</span>
+        <span>+${formatAmount(order.expressServiceFee)}</span>
+      </div>
+      ` : ''}
+      ${order.discountAmount > 0 ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #059669;">
+        <span>Discount:</span>
+        <span>-${formatAmount(order.discountAmount)}</span>
+      </div>
+      ` : ''}
+      ${order.taxAmount > 0 ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px;">
+        <span>Tax:</span>
+        <span>${formatAmount(order.taxAmount)}</span>
+      </div>
+      ` : ''}
+      <div style="display: flex; justify-content: space-between; padding: 12px 0 8px 0; font-size: 16px; font-weight: 700; border-top: 2px solid #e5e7eb; margin-top: 8px;">
+        <span>Total Amount:</span>
+        <span>${formatAmount(order.totalAmount)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #059669; font-weight: 600;">
+        <span>Paid:</span>
+        <span>${formatAmount(order.paidAmount)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; ${order.balanceAmount > 0 ? 'color: #dc2626;' : 'color: #10b981;'} font-weight: 600;">
+        <span>Balance:</span>
+        <span>${formatAmount(order.balanceAmount)}</span>
+      </div>
+    </div>
+
+    ${paymentHistoryHTML}
+
+    <!-- Special Instructions -->
+    ${order.specialInstructions ? `
+    <div style="margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+      <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #92400e;">Special Instructions:</h4>
+      <p style="margin: 0; font-size: 13px; color: #78350f;">${order.specialInstructions}</p>
+    </div>
+    ` : ''}
+
+    <!-- Footer -->
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center;">
+      <p style="font-size: 14px; font-weight: 600; color: #3b82f6; margin: 0 0 10px 0;">Thank you for choosing ${businessName}!</p>
+      <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">Please keep this receipt for your records.</p>
+      <p style="font-size: 12px; color: #6b7280; margin: 5px 0;">For inquiries, call ${businessPhone}</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+    // Plain text version
+    const emailText = `
+${businessName}
+${businessAddress}
+Phone: ${businessPhone}
+Email: ${businessEmail}
+
+RECEIPT
+========================================
+
+Receipt No: ${orderNumber}
+Date: ${formatDate(order.createdAt)}
+Customer: ${customerName}
+Status: ${order.status?.toUpperCase()}
+
+ORDER ITEMS
+----------------------------------------
+${order.items?.map(item => 
+  `${item.serviceName || 'Service'} - ${item.weight > 0 ? `${item.weight} kg` : `${item.quantity} pc`} @ ${formatAmount(item.unitPrice)} = ${formatAmount(item.totalPrice)}`
+).join('\n')}
+
+PAYMENT SUMMARY
+----------------------------------------
+Subtotal: ${formatAmount(order.subtotal)}
+${order.isExpressService && order.expressServiceFee > 0 ? `Express Service (1 Day): +${formatAmount(order.expressServiceFee)}\n` : ''}${order.discountAmount > 0 ? `Discount: -${formatAmount(order.discountAmount)}\n` : ''}${order.taxAmount > 0 ? `Tax: ${formatAmount(order.taxAmount)}\n` : ''}Total Amount: ${formatAmount(order.totalAmount)}
+Paid: ${formatAmount(order.paidAmount)}
+Balance: ${formatAmount(order.balanceAmount)}
+
+${order.payments && order.payments.length > 0 ? `
+PAYMENT HISTORY
+----------------------------------------
+${order.payments.map(payment => 
+  `${payment.method?.charAt(0).toUpperCase()}${payment.method?.slice(1)} - ${formatAmount(payment.amount)} (${formatDate(payment.createdAt || payment.processedAt)})`
+).join('\n')}
+` : ''}
+
+${order.specialInstructions ? `
+SPECIAL INSTRUCTIONS
+----------------------------------------
+${order.specialInstructions}
+` : ''}
+
+Thank you for choosing ${businessName}!
+Please keep this receipt for your records.
+For inquiries, call ${businessPhone}
+`;
+
+    const result = await sendEmail(
+      email,
+      `Receipt - ${orderNumber} | ${businessName}`,
+      emailText,
+      emailHtml
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Error sending receipt:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to send receipt',
+      error
+    };
+  }
+};
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -625,6 +883,7 @@ module.exports = {
   sendBankAccountDetails,
   sendOrderConfirmation,
   sendPickupScheduledEmail,
+  sendReceipt,
   
   // Verification functions
   verifyEmailConnection,

@@ -38,8 +38,7 @@ const ServiceFormPage = () => {
   const duplicateFrom = location.state?.duplicateFrom || null;
 
   // Fetch service if editing
-  const { data: serviceData, isLoading: isLoadingService } = useService(id);
-  const service = serviceData?.service || null;
+  const { data: service, isLoading: isLoadingService } = useService(id);
   
   const steps = [
     { number: 1, title: 'Basic Info', description: 'Name & description' },

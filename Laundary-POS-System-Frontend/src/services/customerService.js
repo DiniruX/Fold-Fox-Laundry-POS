@@ -12,9 +12,7 @@ export const customerService = {
         )
       );
       
-      console.log('Customer API Request Params:', cleanParams); // Debug log
       const response = await customersAPI.getAll(cleanParams);
-      console.log('Customer API Response:', response.data); // Debug log
       
       return {
         success: true,
@@ -26,7 +24,7 @@ export const customerService = {
         hasPrevPage: response.data.data.pagination?.hasPrev || false,
       };
     } catch (error) {
-      console.error('Error fetching customers:', error);
+      // Error fetching customers
       return {
         success: false,
         customers: [],
@@ -44,13 +42,12 @@ export const customerService = {
   getCustomerById: async (id) => {
     try {
       const response = await customersAPI.getById(id);
-      console.log('Customer by ID Response:', response.data); // Debug log
       return {
         success: true,
         customer: response.data.customer,
       };
     } catch (error) {
-      console.error('Error fetching customer:', error);
+      // Error fetching customer
       return {
         success: false,
         customer: null,
@@ -63,13 +60,12 @@ export const customerService = {
   getCustomerByPhone: async (phoneNumber) => {
     try {
       const response = await customersAPI.getByPhone(phoneNumber);
-      console.log('Customer by Phone Response:', response.data); // Debug log
       return {
         success: true,
         data: response.data.customer,
       };
     } catch (error) {
-      console.error('Error fetching customer by phone:', error);
+      // Error fetching customer by phone
       return {
         success: false,
         data: null,
@@ -82,14 +78,13 @@ export const customerService = {
   createCustomer: async (customerData) => {
     try {
       const response = await customersAPI.create(customerData);
-      console.log('Create Customer Response:', response.data); // Debug log
       return {
         success: true,
         customer: response.data.customer,
         message: response.data.message || 'Customer created successfully',
       };
     } catch (error) {
-      console.error('Error creating customer:', error);
+      // Error creating customer
       return {
         success: false,
         customer: null,
@@ -102,14 +97,13 @@ export const customerService = {
   updateCustomer: async (id, customerData) => {
     try {
       const response = await customersAPI.update(id, customerData);
-      console.log('Update Customer Response:', response.data); // Debug log
       return {
         success: true,
         customer: response.data.customer,
         message: response.data.message || 'Customer updated successfully',
       };
     } catch (error) {
-      console.error('Error updating customer:', error);
+      // Error updating customer
       return {
         success: false,
         customer: null,
@@ -138,7 +132,6 @@ export const customerService = {
   searchCustomers: async (searchParams) => {
     try {
       const response = await customersAPI.search(searchParams);
-      console.log('Search Customers Response:', response.data); // Debug log
       return {
         success: true,
         customers: response.data.data || [],
@@ -149,7 +142,7 @@ export const customerService = {
         hasPrevPage: false,
       };
     } catch (error) {
-      console.error('Error searching customers:', error);
+      // Error searching customers
       return {
         success: false,
         customers: [],
@@ -167,13 +160,12 @@ export const customerService = {
   getCustomerOrderHistory: async (id, params = {}) => {
     try {
       const response = await customersAPI.getOrderHistory(id, params);
-      console.log('Order History Response:', response.data); // Debug log
       return {
         success: true,
         data: response.data.data, // Extract the nested data object
       };
     } catch (error) {
-      console.error('Error fetching order history:', error);
+      // Error fetching order history
       return {
         success: false,
         data: { orders: [] }, // Return empty array structure on error
@@ -186,13 +178,12 @@ export const customerService = {
   getCustomerAnalytics: async (id, params = {}) => {
     try {
       const response = await customersAPI.getAnalytics(id, params);
-      console.log('Customer Analytics Response:', response.data); // Debug log
       return {
         success: true,
         data: response.data.data, // Extract the nested data object
       };
     } catch (error) {
-      console.error('Error fetching analytics:', error);
+      // Error fetching analytics
       return {
         success: false,
         data: {},
@@ -238,19 +229,87 @@ export const customerService = {
   // Get customer statistics
   getCustomerStats: async (params = {}) => {
     try {
-      console.log('Customer Stats API Request Params:', params);
       const response = await customersAPI.getStats(params);
-      console.log('Customer Stats API Response:', response);
       return {
         success: true,
         data: response.data.data,
       };
     } catch (error) {
-      console.error('Error fetching customer stats:', error);
+      // Error fetching customer stats
       return {
         success: false,
         data: {},
         error: error.response?.data?.message || 'Failed to fetch customer statistics',
+      };
+    }
+  },
+
+  // Register customer from landing page (PUBLIC - no auth required)
+  // Includes automatic retry logic for transient failures
+  registerFromLanding: async (customerData, maxRetries = 3) => {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await customersAPI.registerFromLanding(customerData);
+        return {
+          success: true,
+          customer: response.data.data.customer,
+          message: response.data.message
+        };
+      } catch (error) {
+        lastError = error;
+        
+        // Get error status and message
+        const status = error.response?.status;
+        const errorMsg = error.response?.data?.message || error.message;
+        
+        // Don't retry on client errors (400-499) - these are validation/user errors
+        if (status >= 400 && status < 500) {
+          // Return immediately for client errors
+          return {
+            success: false,
+            customer: null,
+            error: errorMsg || 'Registration failed. Please check your information.',
+          };
+        }
+        
+        // Retry on server errors (500+) or network errors
+        if (attempt < maxRetries) {
+          // Exponential backoff: wait longer between each retry
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          console.log(`Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+          continue;
+        }
+      }
+    }
+    
+    // All retries exhausted
+    return {
+      success: false,
+      customer: null,
+      error: lastError?.response?.data?.message || 
+             'Registration failed after multiple attempts. Please try again later.',
+    };
+  },
+
+  // Get customer discount information (Protected)
+  getCustomerDiscountInfo: async (customerId) => {
+    try {
+      const response = await customersAPI.getDiscountInfo(customerId);
+      return {
+        success: true,
+        discountInfo: response.data.data.discountInfo,
+        discountSummary: response.data.data.discountSummary,
+        orderHistory: response.data.data.orderHistory
+      };
+    } catch (error) {
+      // Error fetching customer discount info
+      return {
+        success: false,
+        discountInfo: null,
+        error: error.response?.data?.message || 'Failed to fetch discount information',
       };
     }
   },

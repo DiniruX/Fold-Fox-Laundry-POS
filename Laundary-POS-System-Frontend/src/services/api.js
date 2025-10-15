@@ -101,6 +101,10 @@ export const customersAPI = {
   bulkUpdate: (data) => api.put('/customers/bulk-update', data),
   getStats: () => api.get('/customers/stats'),
   search: (params) => api.get('/customers/search', { params }),
+  // Public endpoint - no auth required
+  registerFromLanding: (data) => axios.post(`${API_BASE_URL}/customers/register-from-landing`, data),
+  // Get customer discount info
+  getDiscountInfo: (id) => api.get(`/customers/${id}/discount-info`),
 };
 
 // Orders API methods
@@ -114,11 +118,11 @@ export const ordersAPI = {
   delete: (id) => api.delete(`/orders/${id}`),
   addPayment: (id, data) => api.post(`/orders/${id}/payments`, data),
   sendBankDetails: (id, data) => api.post(`/orders/${id}/send-bank-details`, data),
+  sendReceipt: (id, data) => api.post(`/orders/${id}/send-receipt`, data),
   getAnalytics: (params) => api.get('/orders/analytics', { params }),
   bulkUpdate: (data) => api.post('/orders/bulk-update', data),
   getByCustomer: (customerId, params) => api.get(`/orders/customer/${customerId}`, { params }),
   generateReceipt: (id) => api.get(`/orders/${id}/receipt`),
-  sendReceipt: (id) => api.post(`/orders/${id}/send-receipt`),
 };
 
 // Services API methods

@@ -142,35 +142,35 @@ const ProfileModal = ({ isOpen, onClose }) => {
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <div className="space-y-6 max-h-[calc(100vh-180px)] overflow-y-auto pr-2">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Account Settings</h2>
+        <div className="flex items-center justify-between pb-4 border-b-2 border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900">Account Settings</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+            className="text-gray-400 hover:text-gray-600 focus:outline-none p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        <div className="border-b-2 border-gray-200">
+          <nav className="-mb-0.5 flex space-x-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center space-x-2 py-3 px-2 border-b-2 font-semibold text-base transition-all ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                   <span>{tab.name}</span>
                 </button>
               );
@@ -181,21 +181,21 @@ const ProfileModal = ({ isOpen, onClose }) => {
         {/* Message */}
         {message.text && (
           <div
-            className={`rounded-md p-4 ${
+            className={`rounded-xl p-5 border-2 ${
               message.type === 'success'
-                ? 'bg-green-50 border border-green-200'
-                : 'bg-red-50 border border-red-200'
+                ? 'bg-green-50 border-green-300'
+                : 'bg-red-50 border-red-300'
             }`}
           >
             <div className="flex items-center">
               {message.type === 'success' ? (
-                <CheckIcon className="h-5 w-5 text-green-400 mr-2" />
+                <CheckIcon className="h-6 w-6 text-green-500 mr-3" />
               ) : (
-                <XMarkIcon className="h-5 w-5 text-red-400 mr-2" />
+                <XMarkIcon className="h-6 w-6 text-red-500 mr-3" />
               )}
               <p
-                className={`text-sm ${
-                  message.type === 'success' ? 'text-green-700' : 'text-red-700'
+                className={`text-base font-medium ${
+                  message.type === 'success' ? 'text-green-800' : 'text-red-800'
                 }`}
               >
                 {message.text}
@@ -206,8 +206,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
         {/* Profile Tab */}
         {activeTab === 'profile' && (
-          <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
+          <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 gap-5">
               <Input
                 {...profileForm.register('name')}
                 label="Full Name"
@@ -235,12 +235,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
+                className="px-6 py-3"
               >
                 Cancel
               </Button>
@@ -248,8 +249,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 type="submit"
                 variant="primary"
                 loading={isLoading}
+                className="px-6 py-3"
               >
-                Update Profile
+                ✓ Update Profile
               </Button>
             </div>
           </form>
@@ -257,8 +259,8 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
         {/* Password Tab */}
         {activeTab === 'password' && (
-          <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
+          <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 gap-5">
               <Input
                 {...passwordForm.register('currentPassword')}
                 label="Current Password"
@@ -326,12 +328,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-200">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isLoading}
+                className="px-6 py-3"
               >
                 Cancel
               </Button>
@@ -339,8 +342,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
                 type="submit"
                 variant="primary"
                 loading={isLoading}
+                className="px-6 py-3"
               >
-                Change Password
+                ✓ Change Password
               </Button>
             </div>
           </form>

@@ -768,6 +768,170 @@ const searchCustomers = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Register customer from landing page
+ * @route   POST /api/customers/register-from-landing
+ * @access  Public (no authentication required)
+ */
+const registerFromLanding = async (req, res) => {
+  try {
+    const {
+      fullName,
+      email,
+      phone,
+      phoneNumber, // Accept both phone and phoneNumber
+      address,
+      isStudent,
+      studentId,
+      university,
+      campaignCode
+    } = req.body;
+
+    // Validate required fields
+    if (!fullName || (!phone && !phoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name and phone number are required'
+      });
+    }
+
+    // Normalize phone field
+    const customerPhone = phone || phoneNumber;
+
+    // Check if customer already exists
+    // Optimized: Only select _id field and use lean() for faster query
+    const existingCustomer = await Customer.findOne({
+      $or: [
+        { phoneNumber: customerPhone },
+        ...(email ? [{ email: email.toLowerCase() }] : [])
+      ]
+    })
+    .select('_id') // Only select _id, we don't need full document
+    .lean() // Return plain JS object instead of Mongoose document (faster)
+    .exec();
+
+    if (existingCustomer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer already registered with this phone number or email'
+      });
+    }
+
+    // Verify campaign code (if provided)
+    let isCampaignValid = false;
+    if (campaignCode) {
+      // Valid campaign codes
+      const validCampaigns = ['GRAND_OPENING_2025', 'STUDENT_WELCOME_2025', 'CAMPAIGN2025'];
+      isCampaignValid = validCampaigns.includes(campaignCode.toUpperCase());
+    }
+
+    // Create customer object
+    const customerData = {
+      fullName,
+      phoneNumber: customerPhone,
+      email: email || undefined,
+      address: address || {},
+      
+      // Student information
+      isStudent: isStudent || false,
+      studentId: isStudent ? studentId : null,
+      university: isStudent ? university : null,
+      campusId: isStudent ? studentId : null, // Use studentId as campusId
+      
+      // Campaign tracking
+      registeredViaCampaign: isCampaignValid,
+      campaignCode: isCampaignValid ? campaignCode.toUpperCase() : null,
+      campaignRegistrationDate: isCampaignValid ? new Date() : null,
+      
+      // Discount eligibility
+      eligibleForCampaignDiscount: isCampaignValid,
+      eligibleForStudentDiscount: isStudent || false,
+      
+      // Source tracking
+      registrationSource: 'landing_page',
+      
+      // First order tracking
+      firstOrderCompleted: false
+    };
+
+    const customer = await Customer.create(customerData);
+
+    // Get discount information
+    const discountInfo = customer.getApplicableDiscount();
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful!',
+      data: {
+        customer: {
+          id: customer._id,
+          fullName: customer.fullName,
+          email: customer.email,
+          phoneNumber: customer.phoneNumber,
+          isStudent: customer.isStudent,
+          registeredViaCampaign: customer.registeredViaCampaign,
+          discountInfo: discountInfo
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Landing page registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed. Please try again.',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get customer discount information
+ * @route   GET /api/customers/:id/discount-info
+ * @access  Admin & Cashier
+ */
+const getCustomerDiscountInfo = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.params.id);
+    
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    const discountInfo = customer.getApplicableDiscount();
+    const discountSummary = customer.getDiscountSummary();
+
+    // Get order count
+    const orderCount = await Order.countDocuments({ 
+      customer: customer._id,
+      isDeleted: false
+    });
+
+    res.json({
+      success: true,
+      data: {
+        discountInfo,
+        discountSummary,
+        orderHistory: {
+          totalOrders: orderCount,
+          firstOrderCompleted: customer.firstOrderCompleted,
+          firstOrderDate: customer.firstOrderDate
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch discount info',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createCustomer,
   getCustomers,
@@ -780,5 +944,7 @@ module.exports = {
   updateLoyaltyPoints,
   bulkUpdateCustomers,
   getCustomerStats,
-  searchCustomers
+  searchCustomers,
+  registerFromLanding,
+  getCustomerDiscountInfo
 };

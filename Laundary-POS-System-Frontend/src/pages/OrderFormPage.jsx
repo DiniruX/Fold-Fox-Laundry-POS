@@ -22,6 +22,7 @@ const OrderFormPage = () => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [isExpressService, setIsExpressService] = useState(false);
 
   const isEditing = !!id;
   const title = isEditing ? 'Edit Order' : 'Create New Order';
@@ -77,6 +78,7 @@ const OrderFormPage = () => {
       },
       specialInstructions: '',
       tags: [],
+      isExpressService: false,
     },
   });
 
@@ -123,8 +125,10 @@ const OrderFormPage = () => {
         deliveryAddress: order.deliveryAddress || {},
         specialInstructions: order.specialInstructions || '',
         tags: order.tags || [],
+        isExpressService: order.isExpressService || false,
       });
       setSelectedCustomer(order.customer);
+      setIsExpressService(order.isExpressService || false);
     } else if (!preSelectedCustomer) {
       reset({
         customerId: '',
@@ -155,8 +159,10 @@ const OrderFormPage = () => {
         },
         specialInstructions: '',
         tags: [],
+        isExpressService: false,
       });
       setSelectedCustomer(null);
+      setIsExpressService(false);
       setCurrentStep(1);
     }
   }, [order, preSelectedCustomer, reset, setValue]);
@@ -185,6 +191,7 @@ const OrderFormPage = () => {
         // Explicitly convert to boolean to ensure proper type
         pickupRequired: Boolean(data.pickupRequired),
         deliveryRequired: Boolean(data.deliveryRequired),
+        isExpressService: Boolean(isExpressService),
       };
 
       console.log('[OrderForm] Submitting order with:', {
@@ -629,7 +636,7 @@ const OrderFormPage = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-colors">
                     <input
                       type="checkbox"
@@ -641,6 +648,22 @@ const OrderFormPage = () => {
                       📦 Pickup Required
                     </label>
                   </div>
+                  
+                  <div className="flex items-center p-4 border-2 border-gray-200 rounded-xl hover:border-orange-300 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="isExpressService"
+                      {...register('isExpressService')}
+                      checked={isExpressService}
+                      onChange={(e) => setIsExpressService(e.target.checked)}
+                      className="h-5 w-5 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="isExpressService" className="ml-3 block">
+                      <span className="text-sm font-semibold text-gray-700">⚡ 1-Day Express</span>
+                      <span className="ml-2 text-xs text-orange-600 font-bold">+LKR 100</span>
+                    </label>
+                  </div>
+                  
                   <div className="flex items-center p-4 border-2 border-gray-200 rounded-xl hover:border-green-300 transition-colors">
                     <input
                       type="checkbox"

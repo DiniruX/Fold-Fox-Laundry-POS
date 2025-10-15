@@ -169,6 +169,48 @@ const orderSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Tax amount cannot be negative']
   },
+  // Express Service (1 Day Service)
+  isExpressService: {
+    type: Boolean,
+    default: false
+  },
+  expressServiceFee: {
+    type: Number,
+    default: 0,
+    min: [0, 'Express service fee cannot be negative']
+  },
+  // Discount Information (Enhanced)
+  discount: {
+    type: {
+      type: String,
+      enum: ['campaign', 'student', 'manual', 'loyalty', 'none'],
+      default: 'none'
+    },
+    percentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    },
+    amount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    description: {
+      type: String,
+      default: ''
+    },
+    code: {
+      type: String,
+      trim: true,
+      uppercase: true
+    },
+    isFirstOrderDiscount: {
+      type: Boolean,
+      default: false
+    }
+  },
   discountAmount: {
     type: Number,
     default: 0,
@@ -424,6 +466,57 @@ orderSchema.methods.addPayment = function(paymentData) {
 orderSchema.methods.calculateLoyaltyPoints = function(pointsPerRupee = 1) {
   this.loyaltyPointsEarned = Math.floor(this.totalAmount * pointsPerRupee);
   return this.loyaltyPointsEarned;
+};
+
+/**
+ * Apply discount to order
+ * @param {Object} discountInfo - Discount information from customer.getApplicableDiscount()
+ */
+orderSchema.methods.applyDiscount = function(discountInfo) {
+  if (!discountInfo || discountInfo.percentage === 0) {
+    // No discount
+    this.discount = {
+      type: 'none',
+      percentage: 0,
+      amount: 0,
+      description: 'No Discount',
+      code: null,
+      isFirstOrderDiscount: false
+    };
+    this.discountAmount = 0;
+    return;
+  }
+
+  // Calculate discount amount
+  const discountAmount = (this.subtotal * discountInfo.percentage) / 100;
+
+  // Set discount information
+  this.discount = {
+    type: discountInfo.type,
+    percentage: discountInfo.percentage,
+    amount: discountAmount,
+    description: discountInfo.description,
+    code: discountInfo.code,
+    isFirstOrderDiscount: discountInfo.type === 'campaign'
+  };
+  
+  this.discountAmount = discountAmount;
+};
+
+/**
+ * Recalculate order totals with discount
+ */
+orderSchema.methods.recalculateTotal = function() {
+  // Calculate subtotal from items
+  if (this.items && this.items.length > 0) {
+    this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
+  }
+  
+  // Calculate total with discount and tax
+  this.totalAmount = this.subtotal - this.discountAmount + this.taxAmount;
+  this.balanceAmount = this.totalAmount - this.paidAmount;
+  
+  return this.totalAmount;
 };
 
 // Instance method to check if order can be edited

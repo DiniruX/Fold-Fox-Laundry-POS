@@ -170,7 +170,7 @@ const LoyaltyManager = ({ isOpen, onClose, customer, onSuccess }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="lg">
-      <div className="space-y-6">
+      <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
         {/* Enhanced Header */}
         <div className="flex items-start justify-between pb-4 border-b border-gray-200">
           <div className="flex items-center space-x-4">

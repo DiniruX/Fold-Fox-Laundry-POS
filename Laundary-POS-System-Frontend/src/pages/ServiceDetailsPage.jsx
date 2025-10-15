@@ -30,8 +30,7 @@ const ServiceDetailsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Fetch service data
-  const { data: serviceData, isLoading } = useService(id);
-  const service = serviceData?.service || null;
+  const { data: service, isLoading } = useService(id);
 
   const { data: analytics, isLoading: analyticsLoading } = useServiceAnalytics(id, {
     period: selectedPeriod,

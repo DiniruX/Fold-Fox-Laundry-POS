@@ -103,7 +103,7 @@ const Layout = () => {
                   {/* Footer left - Brand */}
                   <div className="flex items-center gap-3">
                     <img
-                      src="/images/FFLogo.png"
+                      src="/images/FFLogo.webp"
                       alt="Fox Fold Logo"
                       className="h-10 w-10 rounded-lg shadow-sm object-contain bg-white"
                     />

@@ -15,9 +15,12 @@ const {
 const { authenticateToken } = require('../middleware/auth');
 const { validateLogin, validateUser } = require('../middleware/validation');
 
+// Import rate limiters for security
+const { loginLimiter, strictLimiter } = require('../middleware/rateLimitConfig');
+
 // Public routes
 router.post('/register', validateUser, register);
-router.post('/login', validateLogin, login);
+router.post('/login', loginLimiter, validateLogin, login);
 router.post('/refresh-token', refreshToken);
 router.post('/check-email', checkEmail);
 
@@ -26,7 +29,7 @@ router.use(authenticateToken);
 
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
-router.put('/change-password', changePassword);
+router.put('/change-password', strictLimiter, changePassword); // Strict rate limit for security
 router.post('/logout', logout);
 
 module.exports = router;

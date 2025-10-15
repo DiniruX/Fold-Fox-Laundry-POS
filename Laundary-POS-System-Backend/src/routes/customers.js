@@ -13,12 +13,18 @@ const {
   updateLoyaltyPoints,
   bulkUpdateCustomers,
   getCustomerStats,
-  searchCustomers
+  searchCustomers,
+  registerFromLanding,
+  getCustomerDiscountInfo
 } = require('../controllers/customerController');
 
 const { authenticateToken } = require('../middleware/auth');
 const { requireAdmin, requireCashierOrAdmin, canViewCustomers, canManageCustomers, canUpdateCustomers, canDeleteCustomers } = require('../middleware/roleCheck');
 const { validateCustomerCreate, validateCustomerUpdate } = require('../middleware/validation');
+
+// Import new middlewares for high-traffic handling
+const { registrationLimiter } = require('../middleware/rateLimitConfig');
+const { validateRegistration } = require('../middleware/registrationValidation');
 
 /**
  * Customer Routes - Role-based access control
@@ -26,7 +32,16 @@ const { validateCustomerCreate, validateCustomerUpdate } = require('../middlewar
  * Features: Advanced search, analytics, bulk operations, loyalty management
  */
 
-// All routes require authentication
+// PUBLIC ROUTES (No authentication required)
+// Landing page customer registration - with strict rate limiting and validation
+router.post(
+  '/register-from-landing', 
+  registrationLimiter,      // Rate limit: 5 attempts per 15 min per IP
+  validateRegistration,     // Validate and sanitize all inputs
+  registerFromLanding
+);
+
+// All routes below require authentication
 router.use(authenticateToken);
 
 // Get customer statistics (Admin & Cashier)
@@ -46,6 +61,9 @@ router.get('/:id/analytics', requireCashierOrAdmin, getCustomerAnalytics);
 
 // Get customer order history with detailed analytics (Admin & Cashier)
 router.get('/:id/orders', requireCashierOrAdmin, getCustomerOrderHistory);
+
+// Get customer discount information (Admin & Cashier)
+router.get('/:id/discount-info', requireCashierOrAdmin, getCustomerDiscountInfo);
 
 // Get customer by ID (Admin & Cashier)
 router.get('/:id', requireCashierOrAdmin, getCustomerById);

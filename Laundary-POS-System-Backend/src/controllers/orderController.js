@@ -65,7 +65,8 @@ const createOrder = async (req, res) => {
       deliveryAddress,
       specialInstructions,
       tags,
-      loyaltyPointsUsed = 0
+      loyaltyPointsUsed = 0,
+      isExpressService = false
     } = req.body;
 
     // Validate required fields
@@ -113,39 +114,26 @@ const createOrder = async (req, res) => {
       // Calculate pricing based on service type and clothing category
       let unitPrice = service.basePrice;
       
-      console.log(`[Order Creation] Processing service: ${service.name}, Type: ${service.priceType}`);
-      console.log(`[Order Creation] Item data:`, { 
-        weight: item.weight, 
-        quantity: item.quantity, 
-        clothingCategory: item.clothingCategory 
-      });
-      console.log(`[Order Creation] Service clothingPrices:`, service.clothingPrices);
-      
       // Both per_kg and per_piece now use clothing category pricing
       if ((service.priceType === 'per_piece' || service.priceType === 'per_kg') && item.clothingCategory) {
         // Convert Map to Object if necessary
         let pricesObj = service.clothingPrices;
         if (service.clothingPrices instanceof Map) {
           pricesObj = Object.fromEntries(service.clothingPrices);
-          console.log(`[Order Creation] Converted Map to Object:`, pricesObj);
         }
         
         // Try to get the price for the category
         const clothingPrice = pricesObj?.[item.clothingCategory];
-        console.log(`[Order Creation] Found price for ${item.clothingCategory}:`, clothingPrice);
         
         if (clothingPrice !== undefined && clothingPrice !== null && clothingPrice > 0) {
           unitPrice = Number(clothingPrice);
         } else {
-          console.error(`[Order Creation] Price lookup failed for category: ${item.clothingCategory}`);
           return res.status(400).json({
             success: false,
             message: `No price found for clothing category: "${item.clothingCategory}" in service: "${service.name}". Available categories: ${Object.keys(pricesObj || {}).join(', ') || 'NONE'}`
           });
         }
       }
-      
-      console.log(`[Order Creation] Final unitPrice:`, unitPrice);
 
       // Validate weight/quantity based on price type
       if (service.priceType === 'per_kg') {
@@ -167,8 +155,6 @@ const createOrder = async (req, res) => {
       const totalPrice = service.priceType === 'per_kg' 
         ? unitPrice * item.weight
         : unitPrice * item.quantity;
-      
-      console.log(`[Order Creation] Calculated totalPrice:`, totalPrice, `(${unitPrice} × ${service.priceType === 'per_kg' ? item.weight : item.quantity})`);
 
       enrichedItems.push({
         service: service._id,
@@ -181,8 +167,6 @@ const createOrder = async (req, res) => {
         estimatedTime: service.estimatedTime,
         notes: item.notes || ''
       });
-      
-      console.log(`[Order Creation] Added item to enrichedItems:`, enrichedItems[enrichedItems.length - 1]);
 
       totalEstimatedTime += service.estimatedTime;
     }
@@ -208,25 +192,35 @@ const createOrder = async (req, res) => {
     const subtotal = enrichedItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const taxAmount = 0; // Can be configured later
     
-    // Apply 10% student discount if customer is a student
+    // Get applicable discount from customer
+    const applicableDiscount = customer.getApplicableDiscount();
     let discountAmount = 0;
-    if (customer.isStudent) {
-      discountAmount = subtotal * 0.10; // 10% discount on subtotal
-      console.log(`[Order Creation] Student discount applied: 10% = LKR ${discountAmount.toFixed(2)}`);
+    let discountInfo = {
+      type: 'none',
+      percentage: 0,
+      amount: 0,
+      description: 'No Discount',
+      code: null,
+      isFirstOrderDiscount: false
+    };
+    
+    if (applicableDiscount && applicableDiscount.percentage > 0) {
+      discountAmount = (subtotal * applicableDiscount.percentage) / 100;
+      discountInfo = {
+        type: applicableDiscount.type,
+        percentage: applicableDiscount.percentage,
+        amount: discountAmount,
+        description: applicableDiscount.description,
+        code: applicableDiscount.code,
+        isFirstOrderDiscount: applicableDiscount.type === 'campaign'
+      };
     }
     
-    const totalAmount = subtotal + taxAmount - discountAmount;
+    // Calculate express service fee (1 Day Service)
+    const EXPRESS_SERVICE_FEE = 100; // LKR 100 for 1 day express service
+    const expressServiceFee = isExpressService ? EXPRESS_SERVICE_FEE : 0;
     
-    console.log(`[Order Creation] Order totals:`, {
-      subtotal,
-      taxAmount,
-      discountAmount,
-      discountPercentage: customer.isStudent ? '10%' : '0%',
-      isStudent: customer.isStudent,
-      totalAmount,
-      itemCount: enrichedItems.length
-    });
-
+    const totalAmount = subtotal + taxAmount + expressServiceFee - discountAmount;
 
     // Use customer address as default if not provided
     const finalPickupAddress = pickupAddress || customer.address || {};
@@ -239,21 +233,17 @@ const createOrder = async (req, res) => {
 
     // Explicitly check if pickup is required (handle undefined, null, false)
     const isPickupOrder = pickupRequired === true;
-    
-    console.log(`[Order Creation] pickupRequired value:`, pickupRequired, `| isPickupOrder:`, isPickupOrder);
 
     if (isPickupOrder) {
       // Pickup orders start in draft phase (needs confirmation after pickup)
       initialStatus = 'pickup';
       initialPhase = 'draft';
       itemsConfirmed = false;
-      console.log(`[Order Creation] Setting as PICKUP order: phase=draft, status=pickup`);
     } else {
       // Walk-in orders are auto-confirmed (items already received)
       initialStatus = 'received';
       initialPhase = 'confirmed';
       itemsConfirmed = true;
-      console.log(`[Order Creation] Setting as WALK-IN order: phase=confirmed, status=received`);
     }
 
     // Create order
@@ -273,6 +263,9 @@ const createOrder = async (req, res) => {
       deliveryAddress: finalDeliveryAddress,
       subtotal,
       taxAmount,
+      isExpressService,
+      expressServiceFee,
+      discount: discountInfo, // Add discount object
       discountAmount,
       totalAmount,
       paidAmount: 0,
@@ -295,9 +288,18 @@ const createOrder = async (req, res) => {
     await Customer.findByIdAndUpdate(customer._id, {
       $inc: { 
         'loyaltyPoints': -loyaltyPointsUsed + Math.floor(totalAmount),
-        'totalOrders': 1 
+        'totalOrders': 1,
+        'totalSpent': totalAmount
       }
     });
+
+    // Mark first order completed if this is their first order
+    // Only mark as completed after order is successfully created
+    if (!customer.firstOrderCompleted && !pickupRequired) {
+      // For walk-in orders, mark immediately since items are confirmed
+      await customer.markFirstOrderCompleted(order._id);
+    }
+    // Note: For pickup orders, first order will be marked after confirmation
 
     // Send appropriate email to customer based on order type
     try {
@@ -310,8 +312,6 @@ const createOrder = async (req, res) => {
             customerName: customer.fullName,
             pickupAddress: finalPickupAddress
           });
-          console.log(`✅ Pickup scheduled email sent to ${customer.email} for order ${order.orderNumber}`);
-          console.log(`⏳ Order confirmation with actual amounts will be sent after items are received and confirmed`);
         } else {
           // WALK-IN ORDER: Send Email 2 (Order Confirmed - Full details)
           await sendOrderConfirmation({
@@ -329,14 +329,10 @@ const createOrder = async (req, res) => {
               taxAmount: order.taxAmount
             }
           });
-          console.log(`✅ Order confirmation email sent to ${customer.email} for order ${order.orderNumber}`);
         }
-      } else {
-        console.log(`⚠️  No email address for customer ${customer.fullName}, skipping order notification email`);
       }
     } catch (emailError) {
       // Log error but don't fail the order creation
-      console.error('❌ Failed to send order notification email:', emailError.message);
       // Order is still created successfully even if email fails
     }
 
@@ -400,6 +396,11 @@ const getOrders = async (req, res) => {
     // Filter by service status
     if (serviceStatus) {
       filter.serviceStatuses = { $in: [serviceStatus] };
+    }
+
+    // Filter by express service (1 Day Service)
+    if (req.query.isExpressService !== undefined) {
+      filter.isExpressService = req.query.isExpressService === 'true' || req.query.isExpressService === true;
     }
 
     if (customerId) {
@@ -777,7 +778,6 @@ const addPayment = async (req, res) => {
     if (order.orderPhase === 'confirmed' && order.paidAmount > 0) {
       order.transitionPhase('processing', 'Payment received, order now in processing');
       await order.save();
-      console.log(`Order ${order.orderNumber} transitioned to processing phase after payment`);
     }
 
     // Reload order with populated data
@@ -786,6 +786,21 @@ const addPayment = async (req, res) => {
       .populate('items.service', 'name basePrice clothingPrices estimatedTime statuses')
       .populate('createdBy', 'fullName email')
       .populate('assignedStaff', 'fullName phoneNumber');
+
+    // Send receipt email automatically if order is fully paid
+    try {
+      if (updatedOrder.balanceAmount <= 0 && updatedOrder.customer?.email) {
+        const { sendReceipt } = require('../services/notificationService');
+        await sendReceipt({
+          email: updatedOrder.customer.email,
+          orderNumber: updatedOrder.orderNumber,
+          customerName: updatedOrder.customer.fullName,
+          order: updatedOrder
+        });
+      }
+    } catch (emailError) {
+      // Don't fail the payment if email fails
+    }
 
     res.json({
       success: true,
@@ -1078,10 +1093,32 @@ const confirmOrderItems = async (req, res) => {
     const subtotal = confirmedItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const taxAmount = 0;
     
-    // Apply discount if customer is a student
+    // Get fresh customer data for discount calculation
+    const customer = await Customer.findById(order.customer._id);
+    const applicableDiscount = customer.getApplicableDiscount();
+    
     let discountAmount = 0;
-    if (order.customer && order.customer.isStudent) {
-      discountAmount = subtotal * 0.10;
+    let discountInfo = {
+      type: 'none',
+      percentage: 0,
+      amount: 0,
+      description: 'No Discount',
+      code: null,
+      isFirstOrderDiscount: false
+    };
+    
+    if (applicableDiscount && applicableDiscount.percentage > 0) {
+      discountAmount = (subtotal * applicableDiscount.percentage) / 100;
+      discountInfo = {
+        type: applicableDiscount.type,
+        percentage: applicableDiscount.percentage,
+        amount: discountAmount,
+        description: applicableDiscount.description,
+        code: applicableDiscount.code,
+        isFirstOrderDiscount: applicableDiscount.type === 'campaign'
+      };
+      
+      console.log(`[Confirm Items] ${applicableDiscount.description}: ${applicableDiscount.percentage}% = LKR ${discountAmount.toFixed(2)}`);
     }
     
     const totalAmount = subtotal + taxAmount - discountAmount;
@@ -1111,6 +1148,7 @@ const confirmOrderItems = async (req, res) => {
     order.items = confirmedItems;
     order.subtotal = subtotal;
     order.taxAmount = taxAmount;
+    order.discount = discountInfo; // Update discount object
     order.discountAmount = discountAmount;
     order.totalAmount = totalAmount;
     order.balanceAmount = balanceAmount;
@@ -1130,6 +1168,12 @@ const confirmOrderItems = async (req, res) => {
     }
 
     await order.save();
+
+    // Mark first order completed for pickup orders (after confirmation)
+    if (!customer.firstOrderCompleted) {
+      await customer.markFirstOrderCompleted(order._id);
+      console.log(`[Confirm Items] First order marked as completed for customer ${customer.fullName}`);
+    }
 
     // Send Email 2: Order Confirmed (Full details with actual amounts)
     try {
@@ -1255,6 +1299,65 @@ const sendBankDetails = async (req, res) => {
   }
 };
 
+// Send receipt to customer email
+const sendReceiptToCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email: customEmail } = req.body;
+
+    // Get order with populated data
+    const order = await Order.findById(id)
+      .populate('customer', 'fullName phoneNumber email')
+      .populate('items.service', 'name basePrice clothingPrices estimatedTime statuses');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Use custom email if provided, otherwise use customer's email
+    const recipientEmail = customEmail || order.customer?.email;
+
+    if (!recipientEmail || recipientEmail.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required'
+      });
+    }
+
+    // Send receipt
+    const { sendReceipt } = require('../services/notificationService');
+    const result = await sendReceipt({
+      email: recipientEmail,
+      orderNumber: order.orderNumber,
+      customerName: order.customer?.fullName || 'Customer',
+      order: order
+    });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Receipt sent successfully to ${recipientEmail}`,
+        data: { sentTo: recipientEmail }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message || 'Failed to send receipt'
+      });
+    }
+  } catch (error) {
+    console.error('Error sending receipt:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send receipt',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -1266,5 +1369,6 @@ module.exports = {
   getOrderAnalytics,
   bulkUpdateOrders,
   sendBankDetails,
-  confirmOrderItems
+  confirmOrderItems,
+  sendReceiptToCustomer
 };

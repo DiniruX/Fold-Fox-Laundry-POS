@@ -7,6 +7,7 @@ import Layout from './components/layout/Layout';
 import ProtectedRoute, { PublicRoute, AdminRoute, CashierRoute } from './components/ProtectedRoute';
 
 // Pages
+import LandingPage from './pages/Landing/LandingPage';
 import Login from './pages/Auth/Login';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
@@ -47,8 +48,10 @@ function App() {
           <div className="App">
             <Routes>
               {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<LandingPage />} />
               <Route
-                path={ROUTES.LOGIN}
+                path="/login"
                 element={
                   <PublicRoute>
                     <Login />
@@ -56,9 +59,8 @@ function App() {
                 }
               />
 
-              {/* Protected Routes */}
+              {/* Protected Routes - Using original paths for compatibility */}
               <Route
-                path="/"
                 element={
                   <ProtectedRoute>
                     <Layout />
@@ -66,24 +68,23 @@ function App() {
                 }
               >
                 {/* Dashboard - accessible by all authenticated users */}
-                <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
-                <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
 
                 {/* Customer routes - accessible by admin and cashier */}
-                <Route path={ROUTES.CUSTOMERS} element={<Customers />} />
+                <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/new" element={<CustomerFormPage />} />
                 <Route path="/customers/edit/:id" element={<CustomerFormPage />} />
                 <Route path="/customers/:id" element={<CustomerDetailsPage />} />
 
                 {/* Order routes - accessible by admin and cashier */}
-                <Route path={ROUTES.ORDERS} element={<Orders />} />
+                <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/new" element={<OrderFormPage />} />
                 <Route path="/orders/edit/:id" element={<OrderFormPage />} />
                 <Route path="/orders/:id" element={<OrderDetailsPage />} />
 
                 {/* Service routes - admin only */}
                 <Route
-                  path={ROUTES.SERVICES}
+                  path="/services"
                   element={
                     <AdminRoute>
                       <Services />
@@ -117,7 +118,7 @@ function App() {
 
                 {/* Staff routes - admin only */}
                 <Route
-                  path={ROUTES.STAFF}
+                  path="/staff"
                   element={
                     <AdminRoute>
                       <Staff />
@@ -151,7 +152,7 @@ function App() {
 
                 {/* User routes - admin only */}
                 <Route
-                  path={ROUTES.USERS}
+                  path="/users"
                   element={
                     <AdminRoute>
                       <Users />
@@ -185,13 +186,13 @@ function App() {
 
                 {/* Report routes - accessible by all authenticated users */}
                 <Route
-                  path={`${ROUTES.REPORTS}/*`}
+                  path="/reports/*"
                   element={<Reports />}
                 />
               </Route>
 
               {/* Catch all route */}
-              <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </Router>

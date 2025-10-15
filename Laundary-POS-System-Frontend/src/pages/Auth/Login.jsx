@@ -107,7 +107,7 @@ const Login = () => {
       <div 
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
         style={{ 
-          backgroundImage: 'url(/images/Login.jpg)',
+          backgroundImage: 'url(/images/Login.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
@@ -121,7 +121,7 @@ const Login = () => {
           {/* Brand Logo */}
           <div className="flex justify-center mb-8">
             <img 
-              src="/images/FFLogo.png" 
+              src="/images/FFLogo.webp" 
               alt="Fox Fold Logo"
               className="w-20 h-20 rounded-2xl shadow-2xl object-contain p-2"
             />
@@ -336,6 +336,22 @@ const Login = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Link to Landing Page */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Are you a customer?{' '}
+              <a
+                href={ROUTES.LANDING}
+                className="font-semibold transition-colors"
+                style={{ color: '#fe7f2d' }}
+                onMouseEnter={(e) => e.target.style.color = '#e56f24'}
+                onMouseLeave={(e) => e.target.style.color = '#fe7f2d'}
+              >
+                Visit our website
+              </a>
+            </p>
           </div>
         </div>
       </div>

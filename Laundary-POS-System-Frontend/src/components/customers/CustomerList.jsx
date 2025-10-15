@@ -627,32 +627,36 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
       </div>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} size="sm">
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-              <TrashIcon className="w-6 h-6 text-red-600" />
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} size="md">
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
+              <TrashIcon className="w-8 h-8 text-red-600" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Delete Customer</h3>
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete {selectedCustomer?.fullName}?
+              <h3 className="text-xl font-bold text-gray-900">Delete Customer</h3>
+              <p className="text-base text-gray-600 mt-1">
+                Are you sure you want to delete <span className="font-semibold">{selectedCustomer?.fullName}</span>?
               </p>
             </div>
           </div>
-          <div className="text-sm text-gray-600">
-            This action cannot be undone. All customer data and order history will be permanently deleted.
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
+            <p className="text-base text-red-900 font-medium">
+              ⚠️ This action cannot be undone. All customer data and order history will be permanently deleted.
+            </p>
           </div>
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-4 pt-4 border-t-2 border-gray-200">
             <Button
               variant="outline"
               onClick={() => setShowDeleteModal(false)}
               disabled={deleteMutation.isLoading}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button
               variant="danger"
+              className="px-6 py-3"
               onClick={confirmDelete}
               loading={deleteMutation.isLoading}
             >

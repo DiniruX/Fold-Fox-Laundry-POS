@@ -114,8 +114,8 @@ const BulkOperations = ({
 
   return (
     <>
-      <Modal isOpen={isOpen && !showConfirmation} onClose={onClose} title="Bulk Operations" size="lg">
-        <div className="space-y-6">
+      <Modal isOpen={isOpen && !showConfirmation} onClose={onClose} title="Bulk Operations" size="xl">
+        <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
           {/* Selected Services Summary */}
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-2">

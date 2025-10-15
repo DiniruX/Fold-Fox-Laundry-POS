@@ -193,56 +193,56 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
   };
 
   const renderPaymentMethodSelection = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
-          className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+          className={`p-6 border-2 rounded-xl cursor-pointer transition-all transform hover:scale-105 ${
             paymentMethod === PAYMENT_METHODS.CASH
-              ? 'border-green-500 bg-green-50'
-              : 'border-gray-200 hover:border-gray-300'
+              ? 'border-green-500 bg-green-50 shadow-lg'
+              : 'border-gray-200 hover:border-green-300 shadow-sm'
           }`}
           onClick={() => handlePaymentMethodChange(PAYMENT_METHODS.CASH)}
         >
           <div className="flex items-center">
-            <BanknotesIcon className="h-6 w-6 text-green-600 mr-3" />
+            <BanknotesIcon className="h-8 w-8 text-green-600 mr-4" />
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Cash Payment</h3>
-              <p className="text-sm text-gray-500">Pay with cash at the counter</p>
+              <h3 className="text-xl font-bold text-gray-900">Cash Payment</h3>
+              <p className="text-sm text-gray-500 mt-1">Pay with cash at the counter</p>
             </div>
           </div>
         </div>
 
         <div
-          className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+          className={`p-6 border-2 rounded-xl cursor-pointer transition-all transform hover:scale-105 ${
             paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300'
+              ? 'border-blue-500 bg-blue-50 shadow-lg'
+              : 'border-gray-200 hover:border-blue-300 shadow-sm'
           }`}
           onClick={() => handlePaymentMethodChange(PAYMENT_METHODS.BANK_TRANSFER)}
         >
           <div className="flex items-center">
-            <ArrowPathIcon className="h-6 w-6 text-blue-600 mr-3" />
+            <ArrowPathIcon className="h-8 w-8 text-blue-600 mr-4" />
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Bank Transfer</h3>
-              <p className="text-sm text-gray-500">Transfer to our bank account</p>
+              <h3 className="text-xl font-bold text-gray-900">Bank Transfer</h3>
+              <p className="text-sm text-gray-500 mt-1">Transfer to our bank account</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Payment Amount Display */}
-      <div className="space-y-3">
-        <h4 className="text-md font-medium text-gray-900">Payment Amount</h4>
+      <div className="space-y-4">
+        <h4 className="text-lg font-bold text-gray-900">Payment Amount</h4>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-800 font-medium mb-1">Order Balance to Pay:</p>
-              <p className="text-2xl font-bold text-blue-900">{formatOrderAmount(order?.balanceAmount || 0)}</p>
+              <p className="text-sm text-blue-800 font-semibold mb-2">Order Balance to Pay:</p>
+              <p className="text-3xl font-black text-blue-900">{formatOrderAmount(order?.balanceAmount || 0)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-blue-700">Current Paid:</p>
-              <p className="text-sm font-semibold text-blue-900">{formatOrderAmount(order?.paidAmount || 0)}</p>
+              <p className="text-sm text-blue-700 font-medium">Already Paid:</p>
+              <p className="text-xl font-bold text-green-600">{formatOrderAmount(order?.paidAmount || 0)}</p>
             </div>
           </div>
         </div>
@@ -372,8 +372,8 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
         </div>
       )}
 
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onClose}>
+      <div className="flex justify-end space-x-4 pt-4 border-t-2 border-gray-200">
+        <Button type="button" variant="outline" onClick={onClose} className="px-6 py-3">
           Cancel
         </Button>
         {paymentMethod === PAYMENT_METHODS.CASH ? (
@@ -381,15 +381,17 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
             type="button"
             onClick={handleSubmit(onSubmit)}
             disabled={isLoading}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700"
           >
-            {isLoading ? <LoadingSpinner size="sm" /> : 'Complete Payment'}
+            {isLoading ? <LoadingSpinner size="sm" /> : '✓ Complete Cash Payment'}
           </Button>
         ) : (
           <Button
             type="button"
             onClick={() => setPaymentStep('bank_details')}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
           >
-            Continue
+            Continue to Bank Details →
           </Button>
         )}
       </div>
@@ -509,39 +511,39 @@ Use order number as reference.`;
       </div>
 
       {/* Bank Account Details */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-medium text-blue-900">Bank Account Details</h3>
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-blue-900">Bank Account Details</h3>
           <button
             type="button"
             onClick={copyBankDetails}
-            className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
             title="Copy all bank details"
           >
-            <ClipboardDocumentIcon className="h-4 w-4" />
+            <ClipboardDocumentIcon className="h-5 w-5" />
             <span>Copy All</span>
           </button>
         </div>
-        <div className="space-y-2 text-sm bg-white rounded-lg p-3">
-          <div className="flex justify-between border-b pb-1">
-            <span className="font-medium text-gray-600">Bank:</span>
-            <span className="text-gray-900">{bankAccountDetails.bankName}</span>
+        <div className="space-y-3 text-base bg-white rounded-xl p-5 shadow-sm">
+          <div className="flex justify-between border-b-2 pb-3">
+            <span className="font-semibold text-gray-700">Bank:</span>
+            <span className="text-gray-900 font-bold">{bankAccountDetails.bankName}</span>
           </div>
-          <div className="flex justify-between border-b pb-1">
-            <span className="font-medium text-gray-600">Account Name:</span>
-            <span className="text-gray-900">{bankAccountDetails.accountName}</span>
+          <div className="flex justify-between border-b-2 pb-3">
+            <span className="font-semibold text-gray-700">Account Name:</span>
+            <span className="text-gray-900 font-bold">{bankAccountDetails.accountName}</span>
           </div>
-          <div className="flex justify-between border-b pb-1">
-            <span className="font-medium text-gray-600">Account Number:</span>
-            <span className="text-gray-900 font-mono">{bankAccountDetails.accountNumber}</span>
+          <div className="flex justify-between border-b-2 pb-3">
+            <span className="font-semibold text-gray-700">Account Number:</span>
+            <span className="text-gray-900 font-mono font-bold text-lg">{bankAccountDetails.accountNumber}</span>
           </div>
-          <div className="flex justify-between border-b pb-1">
-            <span className="font-medium text-gray-600">Branch:</span>
-            <span className="text-gray-900">{bankAccountDetails.branch}</span>
+          <div className="flex justify-between border-b-2 pb-3">
+            <span className="font-semibold text-gray-700">Branch:</span>
+            <span className="text-gray-900 font-bold">{bankAccountDetails.branch}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-medium text-gray-600">SWIFT Code:</span>
-            <span className="text-gray-900 font-mono">{bankAccountDetails.swiftCode}</span>
+            <span className="font-semibold text-gray-700">SWIFT Code:</span>
+            <span className="text-gray-900 font-mono font-bold">{bankAccountDetails.swiftCode}</span>
           </div>
         </div>
       </div>
@@ -620,16 +622,17 @@ Use order number as reference.`;
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-between space-x-3">
-        <Button type="button" variant="outline" onClick={() => setPaymentStep('method')}>
-          Back
+      <div className="flex justify-between space-x-4 pt-4 border-t-2 border-gray-200">
+        <Button type="button" variant="outline" onClick={() => setPaymentStep('method')} className="px-6 py-3">
+          ← Back
         </Button>
         <Button 
           type="button" 
           onClick={sendBankDetails}
           disabled={isLoading}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
         >
-          {isLoading ? <LoadingSpinner size="sm" /> : 'Send Details via Email'}
+          {isLoading ? <LoadingSpinner size="sm" /> : '✉️ Send Details via Email & Continue →'}
         </Button>
       </div>
     </div>
@@ -654,36 +657,48 @@ Use order number as reference.`;
         </div>
       )}
 
-      <div className="space-y-4">
-        <Input
-          label="Transaction ID / Reference Number"
-          {...register('transactionId', {
-            required: 'Transaction ID is required',
-            minLength: { value: 3, message: 'Transaction ID must be at least 3 characters' }
-          })}
-          error={errors.transactionId?.message}
-          placeholder="Enter transaction ID from bank"
-          required
-        />
+      <div className="space-y-5">
+        <div>
+          <label className="block text-base font-semibold text-gray-800 mb-2">
+            Transaction ID / Reference Number *
+          </label>
+          <input
+            {...register('transactionId', {
+              required: 'Transaction ID is required',
+              minLength: { value: 3, message: 'Transaction ID must be at least 3 characters' }
+            })}
+            className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter transaction ID from bank"
+          />
+          {errors.transactionId && (
+            <p className="mt-2 text-sm text-red-600">{errors.transactionId.message}</p>
+          )}
+        </div>
 
-        <Input
-          label="Notes (Optional)"
-          {...register('notes')}
-          error={errors.notes?.message}
-          placeholder="Any additional notes"
-        />
+        <div>
+          <label className="block text-base font-semibold text-gray-800 mb-2">
+            Notes (Optional)
+          </label>
+          <textarea
+            {...register('notes')}
+            rows={3}
+            className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Any additional notes"
+          />
+        </div>
       </div>
 
-      <div className="flex justify-between space-x-3">
-        <Button type="button" variant="outline" onClick={() => setPaymentStep('bank_details')}>
-          Back
+      <div className="flex justify-between space-x-4 pt-4 border-t-2 border-gray-200">
+        <Button type="button" variant="outline" onClick={() => setPaymentStep('bank_details')} className="px-6 py-3">
+          ← Back
         </Button>
         <Button
           type="button"
           onClick={handleSubmit(onSubmit)}
           disabled={isLoading}
+          className="px-6 py-3 bg-green-600 hover:bg-green-700"
         >
-          {isLoading ? <LoadingSpinner size="sm" /> : 'Complete Payment'}
+          {isLoading ? <LoadingSpinner size="sm" /> : '✓ Complete Payment'}
         </Button>
       </div>
     </div>
@@ -692,33 +707,117 @@ Use order number as reference.`;
   if (!order) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Process Payment">
-      <div className="space-y-6">
-        {/* Order Summary */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Order Summary</h3>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Order Number:</span>
-              <span className="font-medium">{order.orderNumber}</span>
+    <Modal isOpen={isOpen} onClose={onClose} title="Process Payment" size="xl">
+      <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+        {/* Enhanced Order Summary with Discount Breakdown */}
+        <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+          <h3 className="text-2xl font-bold text-gray-900 mb-5 flex items-center">
+            <CurrencyDollarIcon className="h-7 w-7 mr-3 text-orange-500" />
+            Order Summary
+          </h3>
+          
+          {/* Basic Info */}
+          <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Order Number:</span>
+              <span className="font-mono font-semibold text-gray-900">{order.orderNumber}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Customer:</span>
-              <span className="font-medium">{order.customerInfo?.name || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Total Amount:</span>
-              <span className="font-medium">{formatOrderAmount(order.totalAmount)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Paid Amount:</span>
-              <span className="font-medium">{formatOrderAmount(order.paidAmount)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-1">
-              <span>Balance:</span>
-              <span className="font-medium text-red-600">{formatOrderAmount(order.balanceAmount)}</span>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Customer:</span>
+              <span className="font-medium text-gray-900">{order.customerInfo?.name || 'N/A'}</span>
             </div>
           </div>
+
+          {/* Price Breakdown */}
+          <div className="space-y-3 bg-white rounded-lg p-4 border border-gray-200">
+            <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Price Breakdown</h4>
+            
+            {/* Subtotal */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">Subtotal:</span>
+              <span className="font-semibold text-gray-900 text-lg">
+                {formatOrderAmount(order.subtotal || 0)}
+              </span>
+            </div>
+
+            {/* Discount - Highlighted if exists */}
+            {order.discount && order.discount.percentage > 0 && (
+              <div className="flex justify-between items-center bg-green-50 -mx-4 px-4 py-2.5 border-l-4 border-green-500">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-700 font-medium">
+                      Discount ({order.discount.percentage}%):
+                    </span>
+                    {order.discount.type === 'campaign' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange text-white">
+                        CAMPAIGN
+                      </span>
+                    )}
+                    {order.discount.type === 'student' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-600 text-white">
+                        STUDENT
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-green-600 mt-0.5">{order.discount.description}</p>
+                </div>
+                <span className="font-bold text-green-700 text-lg">
+                  - {formatOrderAmount(order.discountAmount || 0)}
+                </span>
+              </div>
+            )}
+
+            {/* Tax */}
+            {order.taxAmount > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Tax:</span>
+                <span className="font-semibold text-gray-900">
+                  + {formatOrderAmount(order.taxAmount)}
+                </span>
+              </div>
+            )}
+
+            {/* Total - Prominent */}
+            <div className="flex justify-between items-center pt-3 mt-3 border-t-2 border-gray-300">
+              <span className="text-lg font-bold text-gray-900">Total Amount:</span>
+              <span className="text-2xl font-black text-orange">
+                {formatOrderAmount(order.totalAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Payment Status */}
+          <div className="space-y-2 mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-700">Already Paid:</span>
+              <span className="font-semibold text-green-600">
+                {formatOrderAmount(order.paidAmount || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-bold text-gray-900">Remaining Balance:</span>
+              <span className={`text-2xl font-black ${order.balanceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatOrderAmount(order.balanceAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Discount Info Badge (if applicable) */}
+          {order.discount && order.discount.code && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-blue-700 font-medium">Discount Code:</p>
+                  <p className="text-sm font-mono font-bold text-blue-900">{order.discount.code}</p>
+                </div>
+                {order.discount.isFirstOrderDiscount && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-orange text-white">
+                    🎉 FIRST ORDER
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Payment Steps */}

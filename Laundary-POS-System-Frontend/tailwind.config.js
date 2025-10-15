@@ -9,6 +9,33 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Brand Colors - FoldFox Laundry
+        navy: {
+          DEFAULT: '#233d4d',
+          50: '#f0f4f6',
+          100: '#dce6ea',
+          200: '#b9cdd5',
+          300: '#96b4c0',
+          400: '#739bab',
+          500: '#508296',
+          600: '#3d6878',
+          700: '#233d4d', // Main brand color
+          800: '#1a2e3a',
+          900: '#111e27',
+        },
+        orange: {
+          DEFAULT: '#fe7f2d',
+          50: '#fff5ed',
+          100: '#ffe8d5',
+          200: '#fecdaa',
+          300: '#fdad74',
+          400: '#fd8e3c',
+          500: '#fe7f2d', // Main accent color
+          600: '#f55d0a',
+          700: '#d94709',
+          800: '#b1390f',
+          900: '#8e2e10',
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

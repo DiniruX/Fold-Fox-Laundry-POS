@@ -22,8 +22,8 @@ const StaffDetailsPage = () => {
   const [activeTab, setActiveTab] = useState('details');
 
   // Fetch staff data
-  const { data: staffData, isLoading } = useStaffMember(id);
-  const staff = staffData?.data?.staff || null;
+  const { staffMember, isLoading } = useStaffMember(id);
+  const staff = staffMember?.data || null;
 
   const getEmploymentTypeLabel = (type) => {
     const labels = {

@@ -171,28 +171,27 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
       isOpen={isOpen}
       onClose={onClose}
       title={`Confirm Items - ${order.orderNumber}`}
-      size="sm"
-      className="!max-w-sm"
+      size="xl"
     >
-      <div className="space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
+      <div className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
         
         {/* Quick Actions */}
-        <div className="flex justify-between items-center bg-blue-50 rounded-lg p-2">
-          <p className="text-xs text-blue-800">
-            Update quantities below
+        <div className="flex justify-between items-center bg-blue-50 rounded-lg p-4">
+          <p className="text-sm text-blue-800 font-medium">
+            Update actual quantities and weights below
           </p>
           <button
             type="button"
             onClick={quickConfirmAll}
-            className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
           >
-            <ClipboardDocumentCheckIcon className="h-3 w-3" />
-            <span>Quick Confirm</span>
+            <ClipboardDocumentCheckIcon className="h-4 w-4" />
+            <span>Quick Confirm All</span>
           </button>
         </div>
 
         {/* Items List */}
-        <div className="space-y-2">
+        <div className="space-y-4">
           {confirmedItems.map((item, index) => {
             const indicator = getItemIndicator(item);
             const Icon = indicator.icon;
@@ -200,27 +199,27 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
             const isPerKg = item.priceType === 'per_kg';
 
             return (
-              <div key={item.itemId} className="border rounded-lg p-2.5 bg-white border-gray-300">
-                {/* Header - Compact */}
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 text-sm">
+              <div key={item.itemId} className="border-2 rounded-xl p-5 bg-white border-gray-200 hover:border-blue-300 transition-all shadow-sm">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-900 text-base">
                     {item.serviceName}
                   </h3>
-                  <div className={`flex items-center space-x-0.5 ${indicator.color}`}>
-                    <Icon className="h-3.5 w-3.5" />
+                  <div className={`flex items-center space-x-1 px-3 py-1 rounded-full ${indicator.color}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
                 </div>
 
-                {/* Estimated vs Actual - Inline */}
-                <div className="flex items-center gap-2 text-xs mb-1.5">
-                  <div className="flex-1">
-                    <span className="text-gray-500">Est:</span>
-                    <span className="font-medium ml-1">
-                      {isPerKg ? `${item.estimatedWeight}kg` : `${item.estimatedQuantity}pcs`}
+                {/* Estimated vs Actual - Grid Layout */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">Estimated</span>
+                    <span className="font-bold text-gray-900 text-lg">
+                      {isPerKg ? `${item.estimatedWeight} kg` : `${item.estimatedQuantity} pcs`}
                     </span>
                   </div>
-                  <span className="text-gray-400">→</span>
-                  <div className="flex-1">
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <span className="text-xs text-blue-600 uppercase font-semibold block mb-1">Actual {isPerKg ? '(kg)' : '(pcs)'}</span>
                     {isPerKg ? (
                       <Input
                         type="number"
@@ -228,8 +227,8 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
                         min="0"
                         value={item.actualWeight}
                         onChange={(e) => updateItemQuantity(index, 'actualWeight', e.target.value)}
-                        placeholder="kg"
-                        className="text-sm font-semibold h-7 w-full"
+                        placeholder="Enter kg"
+                        className="text-base font-bold h-10 w-full"
                       />
                     ) : (
                       <Input
@@ -238,20 +237,20 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
                         min="0"
                         value={item.actualQuantity}
                         onChange={(e) => updateItemQuantity(index, 'actualQuantity', e.target.value)}
-                        placeholder="pcs"
-                        className="text-sm font-semibold h-7 w-full"
+                        placeholder="Enter pcs"
+                        className="text-base font-bold h-10 w-full"
                       />
                     )}
                   </div>
                 </div>
 
-                {/* Price Info - Compact */}
-                <div className="flex justify-between items-center text-xs pt-1.5 border-t">
-                  <span className="text-gray-600">Price:</span>
+                {/* Price Info */}
+                <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200">
+                  <span className="text-sm text-gray-600 font-medium">Total Price:</span>
                   <div className="text-right">
-                    <span className="font-bold text-blue-600">{formatOrderAmount(item.actualPrice)}</span>
+                    <span className="font-bold text-blue-600 text-lg">{formatOrderAmount(item.actualPrice)}</span>
                     {Math.abs(priceDiff) > 0.01 && (
-                      <span className={`ml-2 ${priceDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <span className={`ml-2 text-sm font-semibold ${priceDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         ({priceDiff > 0 ? '+' : ''}{formatOrderAmount(priceDiff)})
                       </span>
                     )}
@@ -262,29 +261,29 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
           })}
         </div>
 
-        {/* Total Display - Compact */}
+        {/* Total Display */}
         {Math.abs(totals.difference) > 0.01 && (
-          <div className={`rounded-lg p-2 text-xs ${
-            totals.difference > 0 ? 'bg-yellow-50 border border-yellow-300' : 'bg-green-50 border border-green-300'
+          <div className={`rounded-xl p-5 border-2 ${
+            totals.difference > 0 ? 'bg-yellow-50 border-yellow-300' : 'bg-green-50 border-green-300'
           }`}>
             <div className="flex justify-between items-center">
-              <span className="font-medium text-gray-700">Total Change:</span>
-              <span className={`font-bold ${totals.difference > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <span className="font-semibold text-gray-800 text-base">Total Price Change:</span>
+              <span className={`font-bold text-xl ${totals.difference > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {totals.difference > 0 ? '+' : ''}{formatOrderAmount(totals.difference)}
-                <span className="text-xs ml-1">({totals.differencePercent > 0 ? '+' : ''}{totals.differencePercent.toFixed(0)}%)</span>
+                <span className="text-sm ml-2">({totals.differencePercent > 0 ? '+' : ''}{totals.differencePercent.toFixed(0)}%)</span>
               </span>
             </div>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-between space-x-2 pt-2 border-t">
+        <div className="flex justify-end space-x-3 pt-4 border-t-2 border-gray-200">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={confirmMutation.isPending}
-            className="text-sm"
+            className="px-6 py-3"
           >
             Cancel
           </Button>
@@ -293,14 +292,14 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
             type="button"
             onClick={handleConfirm}
             disabled={confirmMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 text-sm"
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-3"
           >
             {confirmMutation.isPending ? (
               <LoadingSpinner size="sm" />
             ) : (
               <>
-                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                Confirm & Email
+                <CheckCircleIcon className="h-5 w-5 mr-2" />
+                Confirm & Email Customer
               </>
             )}
           </Button>

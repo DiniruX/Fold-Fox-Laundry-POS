@@ -13,39 +13,41 @@ const LogoutModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="sm">
-      <div className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
+      <div className="space-y-6">
         {/* Icon and Title */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <ExclamationTriangleIcon className="w-6 h-6 text-orange-600" />
+            <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center">
+              <ExclamationTriangleIcon className="w-8 h-8 text-orange-600" />
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900">Sign Out</h3>
-            <p className="text-sm text-gray-500">
+            <h3 className="text-xl font-bold text-gray-900">Sign Out</h3>
+            <p className="text-base text-gray-600 mt-1">
               Are you sure you want to sign out?
             </p>
           </div>
         </div>
 
         {/* Description */}
-        <div className="text-sm text-gray-600">
+        <div className="text-base text-gray-600 bg-gray-50 rounded-lg p-4">
           You will need to sign in again to access your account.
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex justify-end space-x-4 pt-4 border-t-2 border-gray-200">
           <Button
             variant="outline"
             onClick={onClose}
+            className="px-6 py-3"
           >
             Cancel
           </Button>
           <Button
             variant="danger"
             onClick={handleLogout}
+            className="px-6 py-3"
           >
             Sign Out
           </Button>

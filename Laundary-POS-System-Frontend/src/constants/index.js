@@ -9,6 +9,8 @@ export const ROLES = {
 
 // Routes
 export const ROUTES = {
+  HOME: '/',
+  LANDING: '/landing',
   LOGIN: '/login',
   REGISTER: '/register',
   DASHBOARD: '/dashboard',

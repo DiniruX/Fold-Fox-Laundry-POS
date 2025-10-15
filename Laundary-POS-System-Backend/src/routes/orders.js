@@ -11,7 +11,8 @@ const {
   getOrderAnalytics,
   bulkUpdateOrders,
   sendBankDetails,
-  confirmOrderItems
+  confirmOrderItems,
+  sendReceiptToCustomer
 } = require('../controllers/orderController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { validateOrder } = require('../middleware/validation');
@@ -29,6 +30,7 @@ router.patch('/:id/status', updateOrderStatus); // Update order status
 router.put('/:id/confirm-items', confirmOrderItems); // Confirm order items after pickup
 router.post('/:id/payments', addPayment); // Add payment to order
 router.post('/:id/send-bank-details', sendBankDetails); // Send bank details to customer
+router.post('/:id/send-receipt', sendReceiptToCustomer); // Send receipt to customer email
 router.delete('/:id', authorizeRole(['admin']), deleteOrder); // Delete order (Admin only)
 
 // Bulk operations (Admin/Manager only)

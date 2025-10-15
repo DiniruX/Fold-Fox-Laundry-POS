@@ -19,8 +19,8 @@ const StaffFormPage = () => {
   const title = isEditing ? 'Edit Staff Member' : 'Add New Staff Member';
 
   // Fetch staff if editing
-  const { data: staffData, isLoading: isLoadingStaff } = useStaffMember(id);
-  const staff = staffData?.data?.staff || null;
+  const { staffMember, isLoading: isLoadingStaff } = useStaffMember(id);
+  const staff = staffMember?.data || null;
 
   const {
     register,
