@@ -55,7 +55,7 @@ const OrderDetailsPage = () => {
   const [showConfirmItemsModal, setShowConfirmItemsModal] = useState(false);
 
   // Fetch order data
-  const { data: orderData, isLoading, refetch } = useOrder(id);
+  const { data: orderData, isLoading, error, refetch } = useOrder(id);
   const order = orderData?.order || null;
 
   if (isLoading) {
@@ -66,13 +66,41 @@ const OrderDetailsPage = () => {
     );
   }
 
-  if (!order) {
+  // Handle API errors
+  if (error) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900">Order not found</h2>
+        <div className="text-red-600 text-6xl mb-4">⚠️</div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Order</h2>
+        <p className="text-gray-600 mb-4">{error?.response?.data?.message || error?.message || 'Failed to fetch order details'}</p>
+        <div className="space-x-3">
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => navigate('/orders')}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            ← Back to Orders
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle order not found
+  if (!order && !isLoading) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-6xl mb-4">📋</div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+        <p className="text-gray-600 mb-4">The order you're looking for doesn't exist or has been deleted.</p>
         <button
           onClick={() => navigate('/orders')}
-          className="mt-4 text-orange-600 hover:text-orange-700"
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
         >
           ← Back to Orders
         </button>
@@ -528,6 +556,30 @@ Thank you!`;
                         <span className="text-sm text-gray-600">Subtotal:</span>
                         <span className="text-sm font-semibold text-gray-900">{formatOrderAmount(order.subtotal)}</span>
                       </div>
+                      {order.isExpressService && order.expressServiceFee > 0 && (
+                        <div className="flex justify-between items-center bg-blue-50 -mx-4 px-4 py-2 border-l-4 border-blue-500">
+                          <span className="text-sm text-blue-700 font-medium flex items-center">
+                            ⚡ Express Service (1 Day):
+                          </span>
+                          <span className="text-sm font-bold text-blue-700">+{formatOrderAmount(order.expressServiceFee)}</span>
+                        </div>
+                      )}
+                      {order.extraCharges && order.extraCharges.items && order.extraCharges.items.length > 0 && (
+                        <div className="bg-purple-50 -mx-4 px-4 py-2 border-l-4 border-purple-500">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm text-purple-700 font-medium">Extra Items:</span>
+                            <span className="text-sm font-bold text-purple-700">+{formatOrderAmount(order.extraCharges.total)}</span>
+                          </div>
+                          <div className="space-y-1 mt-2">
+                            {order.extraCharges.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-xs text-purple-600">
+                                <span>• {item.name} ({item.quantity}x)</span>
+                                <span>{formatOrderAmount(item.quantity * item.price)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {order.taxAmount > 0 && (
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Tax:</span>
@@ -535,9 +587,16 @@ Thank you!`;
                         </div>
                       )}
                       {order.discountAmount > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Discount:</span>
-                          <span className="text-sm font-semibold text-green-600">-{formatOrderAmount(order.discountAmount)}</span>
+                        <div className="flex justify-between items-center bg-green-50 -mx-4 px-4 py-2 border-l-4 border-green-500">
+                          <div>
+                            <span className="text-sm text-green-700 font-medium block">
+                              Discount ({order.discount?.percentage}%):
+                            </span>
+                            {order.discount?.description && (
+                              <span className="text-xs text-green-600">{order.discount.description}</span>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold text-green-700">-{formatOrderAmount(order.discountAmount)}</span>
                         </div>
                       )}
                       <div className="border-t-2 border-gray-200 pt-3 mt-3">

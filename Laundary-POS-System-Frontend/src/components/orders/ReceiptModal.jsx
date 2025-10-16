@@ -124,10 +124,9 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
           <div className="header">
             <div className="business-name">Fold Fox Laundry</div>
             <div className="business-address">
-              123 Main Street, Colombo 01<br />
-              Sri Lanka<br />
-              Phone: +94 11 234 5678<br />
-              Email: info@foldfoxlaundry.com
+              123 Main Street, Colombo 01, Sri Lanka<br />
+              Phone: 070 700 6557<br />
+              Email: contact.foldfox@gmail.com
             </div>
           </div>
 
@@ -210,6 +209,21 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
               <div className="total-row" style={{ color: '#3b82f6' }}>
                 <span>Express Service (1 Day):</span>
                 <span>+{formatOrderAmount(order.expressServiceFee)}</span>
+              </div>
+            )}
+            {order.extraCharges && order.extraCharges.items && order.extraCharges.items.length > 0 && (
+              <div style={{ marginTop: '10px', marginBottom: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#7c3aed' }}>Extra Items:</div>
+                {order.extraCharges.items.map((item, idx) => (
+                  <div key={idx} className="total-row" style={{ fontSize: '11px', color: '#6b7280' }}>
+                    <span>  • {item.name} ({item.quantity}x @ {formatOrderAmount(item.price)})</span>
+                    <span>{formatOrderAmount(item.quantity * item.price)}</span>
+                  </div>
+                ))}
+                <div className="total-row" style={{ color: '#7c3aed', fontWeight: 'bold', marginTop: '5px' }}>
+                  <span>Extra Items Total:</span>
+                  <span>+{formatOrderAmount(order.extraCharges.total)}</span>
+                </div>
               </div>
             )}
             {order.taxAmount > 0 && (
@@ -306,7 +320,7 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
           <div className="footer">
             <div>Thank you for choosing Fold Fox Laundry!</div>
             <div>Please keep this receipt for your records.</div>
-            <div>For inquiries, call +94 11 234 5678</div>
+            <div>For inquiries, call 070 700 6557</div>
           </div>
         </div>
 

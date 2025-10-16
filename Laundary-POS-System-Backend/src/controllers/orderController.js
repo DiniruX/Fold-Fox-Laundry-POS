@@ -736,7 +736,7 @@ const updateOrderStatus = async (req, res) => {
 const addPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { method, amount, transactionId, notes, status = 'completed' } = req.body;
+    const { method, amount, transactionId, notes, status = 'completed', extraCharges } = req.body;
 
     const order = await Order.findById(id);
     if (!order) {
@@ -760,6 +760,26 @@ const addPayment = async (req, res) => {
         success: false,
         message: 'Transaction ID is required for bank transfer payments'
       });
+    }
+
+    // Handle extra charges (e.g., hangers, bags, etc.)
+    if (extraCharges && extraCharges.items && extraCharges.items.length > 0) {
+      // Add or update extra charges on the order
+      if (!order.extraCharges) {
+        order.extraCharges = { items: [], total: 0 };
+      }
+      
+      // Append new extra items
+      order.extraCharges.items.push(...extraCharges.items);
+      
+      // Update total extra charges
+      order.extraCharges.total = (order.extraCharges.total || 0) + extraCharges.total;
+      
+      // Recalculate order total to include extra charges
+      order.recalculateTotal();
+      
+      console.log(`[Payment] Added extra charges: ${extraCharges.total} to order ${order.orderNumber}`);
+      console.log(`[Payment] New order total: ${order.totalAmount}`);
     }
 
     // For cash payments, no transaction ID needed
@@ -1121,7 +1141,10 @@ const confirmOrderItems = async (req, res) => {
       console.log(`[Confirm Items] ${applicableDiscount.description}: ${applicableDiscount.percentage}% = LKR ${discountAmount.toFixed(2)}`);
     }
     
-    const totalAmount = subtotal + taxAmount - discountAmount;
+    // Include express service fee and extra charges in total
+    const expressServiceFee = order.expressServiceFee || 0;
+    const extraChargesTotal = order.extraCharges?.total || 0;
+    const totalAmount = subtotal + taxAmount + expressServiceFee + extraChargesTotal - discountAmount;
     const balanceAmount = totalAmount - (order.paidAmount || 0);
 
     const originalTotal = order.totalAmount;

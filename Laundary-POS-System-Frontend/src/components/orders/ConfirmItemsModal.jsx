@@ -75,11 +75,15 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
     const estimatedSubtotal = confirmedItems.reduce((sum, item) => sum + item.estimatedPrice, 0);
     const actualSubtotal = confirmedItems.reduce((sum, item) => sum + item.actualPrice, 0);
     
-    // Apply student discount if applicable
+    // Apply discount if applicable
     const discountRate = order.discountAmount > 0 ? (order.discountAmount / order.subtotal) : 0;
     const actualDiscount = actualSubtotal * discountRate;
     
-    const actualTotal = actualSubtotal - actualDiscount;
+    // Include express service fee and extra charges
+    const expressServiceFee = order.expressServiceFee || 0;
+    const extraChargesTotal = order.extraCharges?.total || 0;
+    
+    const actualTotal = actualSubtotal - actualDiscount + expressServiceFee + extraChargesTotal;
     const estimatedTotal = order.totalAmount;
     const difference = actualTotal - estimatedTotal;
 
@@ -87,6 +91,8 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
       estimatedSubtotal,
       actualSubtotal,
       actualDiscount,
+      expressServiceFee,
+      extraChargesTotal,
       actualTotal,
       estimatedTotal,
       difference,
@@ -261,20 +267,57 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
           })}
         </div>
 
-        {/* Total Display */}
-        {Math.abs(totals.difference) > 0.01 && (
-          <div className={`rounded-xl p-5 border-2 ${
-            totals.difference > 0 ? 'bg-yellow-50 border-yellow-300' : 'bg-green-50 border-green-300'
-          }`}>
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-800 text-base">Total Price Change:</span>
-              <span className={`font-bold text-xl ${totals.difference > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {totals.difference > 0 ? '+' : ''}{formatOrderAmount(totals.difference)}
-                <span className="text-sm ml-2">({totals.differencePercent > 0 ? '+' : ''}{totals.differencePercent.toFixed(0)}%)</span>
-              </span>
+        {/* Additional Charges Summary */}
+        {(totals.expressServiceFee > 0 || totals.extraChargesTotal > 0 || totals.actualDiscount > 0) && (
+          <div className="rounded-xl p-4 border-2 border-blue-200 bg-blue-50">
+            <h4 className="text-sm font-bold text-blue-900 mb-3">Additional Charges & Discounts</h4>
+            <div className="space-y-2 text-sm">
+              {totals.expressServiceFee > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-700">⚡ Express Service (1 Day):</span>
+                  <span className="font-semibold text-blue-900">+{formatOrderAmount(totals.expressServiceFee)}</span>
+                </div>
+              )}
+              {totals.extraChargesTotal > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-700">Extra Items:</span>
+                  <span className="font-semibold text-purple-900">+{formatOrderAmount(totals.extraChargesTotal)}</span>
+                </div>
+              )}
+              {totals.actualDiscount > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-green-700">Discount:</span>
+                  <span className="font-semibold text-green-900">-{formatOrderAmount(totals.actualDiscount)}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
+
+        {/* Total Display */}
+        <div className="rounded-xl p-5 border-2 border-gray-300 bg-gray-50">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-semibold text-gray-700 text-base">Estimated Total:</span>
+            <span className="font-bold text-gray-900 text-lg">{formatOrderAmount(totals.estimatedTotal)}</span>
+          </div>
+          <div className="flex justify-between items-center mb-3">
+            <span className="font-bold text-gray-900 text-base">New Total:</span>
+            <span className="font-bold text-blue-600 text-xl">{formatOrderAmount(totals.actualTotal)}</span>
+          </div>
+          {Math.abs(totals.difference) > 0.01 && (
+            <div className={`pt-3 border-t-2 ${
+              totals.difference > 0 ? 'border-yellow-300' : 'border-green-300'
+            }`}>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">Change:</span>
+                <span className={`font-bold text-xl ${totals.difference > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {totals.difference > 0 ? '+' : ''}{formatOrderAmount(totals.difference)}
+                  <span className="text-sm ml-2">({totals.differencePercent > 0 ? '+' : ''}{totals.differencePercent.toFixed(0)}%)</span>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-3 pt-4 border-t-2 border-gray-200">

@@ -31,7 +31,7 @@ const OrderFormPage = () => {
   const preSelectedCustomer = location.state?.preSelectedCustomer || null;
 
   // Fetch order if editing
-  const { data: orderData, isLoading: isLoadingOrder } = useOrder(id);
+  const { data: orderData, isLoading: isLoadingOrder, error: orderError } = useOrder(id);
   const order = orderData?.order || null;
   
   const steps = [
@@ -246,10 +246,49 @@ const OrderFormPage = () => {
 
   const isLoading = createOrderMutation.isPending || updateOrderMutation.isPending || isLoadingOrder;
 
+  // Show loading state when fetching order for editing
   if (isLoadingOrder) {
     return (
       <div className="flex items-center justify-center h-96">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  // Handle error when fetching order for editing
+  if (isEditing && orderError) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Order</h2>
+          <p className="text-gray-600 mb-4">{orderError?.response?.data?.message || orderError?.message || 'Failed to fetch order details'}</p>
+          <button
+            onClick={() => navigate('/orders')}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            ← Back to Orders
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle order not found when editing
+  if (isEditing && !order && !isLoadingOrder) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="text-gray-400 text-6xl mb-4">📋</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+          <p className="text-gray-600 mb-4">The order you're trying to edit doesn't exist or has been deleted.</p>
+          <button
+            onClick={() => navigate('/orders')}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            ← Back to Orders
+          </button>
+        </div>
       </div>
     );
   }
