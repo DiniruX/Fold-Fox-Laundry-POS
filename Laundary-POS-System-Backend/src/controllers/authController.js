@@ -3,15 +3,17 @@ const jwt = require('jsonwebtoken');
 const { getUserPermissions } = require('../utils/permissions');
 
 const generateToken = (userId, rememberMe = false) => {
-  const expiresIn = rememberMe ? '30d' : (process.env.JWT_EXPIRE || '7d');
+  const expiresIn = rememberMe ? '30d' : (process.env.JWT_EXPIRES_IN || '24h');
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
     expiresIn
   });
 };
 
 const generateRefreshToken = (userId) => {
-  return jwt.sign({ userId, type: 'refresh' }, process.env.JWT_SECRET, {
-    expiresIn: '30d'
+  const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  return jwt.sign({ userId, type: 'refresh' }, refreshSecret, {
+    expiresIn
   });
 };
 
@@ -247,7 +249,8 @@ const refreshToken = async (req, res) => {
       });
     }
     
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+    const decoded = jwt.verify(refreshToken, refreshSecret);
     
     if (decoded.type !== 'refresh') {
       return res.status(401).json({
