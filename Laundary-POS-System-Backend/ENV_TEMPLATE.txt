@@ -1,0 +1,31 @@
+# ==================================
+# BACKEND ENVIRONMENT VARIABLES
+# ==================================
+# For Vercel deployment, add these in: Settings → Environment Variables
+
+# ----------------------------------
+# REQUIRED VARIABLES
+# ----------------------------------
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/laundry-pos?retryWrites=true&w=majority
+JWT_SECRET=your-super-secret-jwt-key-min-32-characters-long
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-min-32-characters-long
+NODE_ENV=production
+
+# ----------------------------------
+# OPTIONAL VARIABLES
+# ----------------------------------
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+PORT=5000
+
+# ==================================
+# VERCEL DEPLOYMENT INSTRUCTIONS:
+# ==================================
+# 1. Go to your backend project in Vercel
+# 2. Settings → Environment Variables
+# 3. Add each variable above (only REQUIRED ones are mandatory)
+# 4. Select "Production" environment
+# 5. Click Save
+# 
+# NOTE: FRONTEND_URL is NOT needed - code auto-allows *.vercel.app
+

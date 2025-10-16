@@ -1,0 +1,31 @@
+# ==================================
+# FRONTEND ENVIRONMENT VARIABLES
+# ==================================
+# For Vercel deployment, add these in: Settings → Environment Variables
+
+# ----------------------------------
+# REQUIRED VARIABLE
+# ----------------------------------
+# This should point to your BACKEND URL (not frontend URL!)
+VITE_API_URL=https://your-backend-name.vercel.app/api
+
+# ==================================
+# EXAMPLE VALUES:
+# ==================================
+# If your backend is deployed at: fox-fold-laundary-pos.vercel.app
+# Then set: VITE_API_URL=https://fox-fold-laundary-pos.vercel.app/api
+#
+# IMPORTANT: 
+# - Must use HTTPS (not HTTP)
+# - Must end with /api
+# - Must point to BACKEND, not frontend URL
+
+# ==================================
+# VERCEL DEPLOYMENT INSTRUCTIONS:
+# ==================================
+# 1. Go to your frontend project in Vercel
+# 2. Settings → Environment Variables
+# 3. Add: VITE_API_URL = https://your-backend.vercel.app/api
+# 4. Select "Production" environment
+# 5. Click Save
+
