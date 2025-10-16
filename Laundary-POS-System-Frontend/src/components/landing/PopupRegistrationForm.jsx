@@ -78,9 +78,13 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
       case 1:
         return formData.fullName.trim().length > 0;
       case 2:
-        return formData.phone.trim().length > 0 && formData.email.trim().length > 0 && formData.email.includes('@');
+        // Phone is required, email is optional (but must be valid if provided)
+        const phoneValid = formData.phone.trim().length >= 10;
+        const emailValid = !formData.email || formData.email.trim() === '' || formData.email.includes('@');
+        return phoneValid && emailValid;
       case 3:
-        return formData.streetAddress.trim().length > 0 && formData.city.trim().length > 0;
+        // Address is now optional - allow skipping
+        return true;
       case 4:
         // If student, must have student ID
         return !formData.isStudent || (formData.studentId.trim().length > 0);
@@ -226,7 +230,7 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
             <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                  Phone Number
+                  Phone Number <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -236,14 +240,15 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="0707006557 (10-15 digits)"
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Required for order placement and SMS updates</p>
               </div>
               
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                  Email Address
+                  Email Address <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -253,9 +258,12 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                     value={formData.email}
                     onChange={handleInputChange}
                     className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                    placeholder="john@example.com"
+                    placeholder="customer@example.com"
                   />
                 </div>
+                <p className="text-xs text-blue-600 mt-1 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                  💡 Optional but recommended for email receipts and confirmations
+                </p>
               </div>
             </div>
           </div>
@@ -269,13 +277,21 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                 <MapPin className="w-7 h-7 sm:w-10 sm:h-10 text-orange" />
               </div>
               <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Where should we deliver?</h3>
-              <p className="text-xs sm:text-base text-gray-500">Your clean laundry will arrive here</p>
+              <p className="text-xs sm:text-base text-gray-500">
+                <span className="text-gray-400">(Optional)</span> - Provide now or later when ordering
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <p className="text-xs text-blue-800 text-center">
+                💡 <strong>You can skip this!</strong> Provide your address when placing orders that need pickup/delivery.
+              </p>
             </div>
             
             <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                  Street Address
+                  Street Address <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -283,14 +299,14 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                   value={formData.streetAddress}
                   onChange={handleInputChange}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                  placeholder="123 Main Street, Apt 4B"
+                  placeholder="e.g., Room 305, SLIIT Hostel, Malabe"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                    City
+                    City <span className="text-gray-400 text-xs">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -298,13 +314,13 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                     value={formData.city}
                     onChange={handleInputChange}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                    placeholder="New York"
+                    placeholder="Colombo"
                   />
                 </div>
                 
                 <div>
                   <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                    Zip Code
+                    Zip Code <span className="text-gray-400 text-xs">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -494,23 +510,76 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
               </div>
             )}
 
-            {/* Next Steps */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h4 className="font-bold text-navy mb-2">What's Next?</h4>
-              <ul className="text-left space-y-2 text-sm text-gray-700">
-                <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Visit our store at SLIIT Campus (300m from gate)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Bring your clothes and mention your phone number</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Your discount will be applied automatically!</span>
-                </li>
-              </ul>
+            {/* Next Steps - How to Place Orders */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5">
+              <h4 className="font-bold text-navy mb-3 text-lg flex items-center gap-2">
+                📱 How to Place Your Order
+              </h4>
+              <div className="space-y-3">
+                {/* Option 1: Call or WhatsApp */}
+                <div className="bg-white rounded-lg p-4 border-l-4 border-orange">
+                  <h5 className="font-bold text-orange mb-2 flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Option 1: Call or WhatsApp Us
+                  </h5>
+                  <ul className="text-left space-y-1.5 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>Call <strong className="text-orange">070 700 6557</strong> to place your order</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>WhatsApp us with your order details</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>We'll arrange <strong>FREE pickup</strong> from your location!</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Option 2: Walk-in */}
+                <div className="bg-white rounded-lg p-4 border-l-4 border-green-500">
+                  <h5 className="font-bold text-green-700 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Option 2: Visit Our Store
+                  </h5>
+                  <ul className="text-left space-y-1.5 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>Walk into our store (300m from SLIIT gate)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>Bring your clothes and mention your phone number</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span>Your discount applies automatically!</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Quick Action Buttons */}
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                <a 
+                  href="tel:+94707006557"
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-orange text-white px-4 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call to Order Now
+                </a>
+                <a 
+                  href="https://wa.me/94707006557"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                >
+                  <span className="text-lg">💬</span>
+                  WhatsApp Order
+                </a>
+              </div>
             </div>
 
             {/* Action Buttons */}

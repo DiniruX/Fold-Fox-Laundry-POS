@@ -78,15 +78,86 @@ const Contact = () => {
         {/* Section Header */}
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="text-orange text-xs sm:text-sm md:text-base lg:text-lg font-bold tracking-[0.2em] sm:tracking-[0.25em] uppercase leading-relaxed mb-4 sm:mb-6">
-            Contact Us
+            Contact & Order
           </h2>
           
           <div className="text-center max-w-4xl mx-auto">
             <h3 className="text-navy text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-3 sm:mb-4 tracking-tight px-4 sm:px-0">
-              Get in touch with our team
+              Ready to place an order?
             </h3>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4 sm:px-0">
-              Have questions? We're here to help! Reach out to us anytime.
+              Order via call/WhatsApp or walk into our store. We're here to make your life easier!
+            </p>
+          </div>
+        </div>
+
+        {/* How to Order - Prominent Section */}
+        <div className="bg-gradient-to-br from-orange/10 via-orange/5 to-blue/10 border-2 border-orange/30 rounded-2xl p-6 sm:p-8 mb-12 shadow-xl">
+          <h3 className="text-xl sm:text-2xl font-bold text-navy mb-6 text-center flex items-center justify-center gap-2">
+            <span className="text-2xl">🛒</span>
+            3 Easy Ways to Order
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            {/* Method 1: Call */}
+            <div className="bg-white rounded-xl p-5 border-2 border-orange/20 hover:border-orange hover:shadow-lg transition-all duration-300">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-orange rounded-full flex items-center justify-center mb-3 shadow-lg">
+                  <Phone className="w-7 h-7 text-white" />
+                </div>
+                <h4 className="font-bold text-navy mb-2 text-lg">1. Call Us</h4>
+                <p className="text-sm text-gray-600 mb-3">Quick & easy phone ordering</p>
+                <a 
+                  href="tel:+94707006557"
+                  className="w-full bg-orange text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-orange/90 transition-all"
+                >
+                  070 700 6557
+                </a>
+                <p className="text-xs text-gray-500 mt-2">FREE pickup arranged</p>
+              </div>
+            </div>
+
+            {/* Method 2: WhatsApp */}
+            <div className="bg-white rounded-xl p-5 border-2 border-green-500/20 hover:border-green-500 hover:shadow-lg transition-all duration-300">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-green-600 rounded-full flex items-center justify-center mb-3 shadow-lg">
+                  <MessageCircle className="w-7 h-7 text-white" />
+                </div>
+                <h4 className="font-bold text-navy mb-2 text-lg">2. WhatsApp</h4>
+                <p className="text-sm text-gray-600 mb-3">Message us your order</p>
+                <a 
+                  href="https://wa.me/94707006557"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all"
+                >
+                  Chat Now
+                </a>
+                <p className="text-xs text-gray-500 mt-2">Quick responses</p>
+              </div>
+            </div>
+
+            {/* Method 3: Walk-in */}
+            <div className="bg-white rounded-xl p-5 border-2 border-blue-500/20 hover:border-blue-500 hover:shadow-lg transition-all duration-300">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center mb-3 shadow-lg">
+                  <MapPin className="w-7 h-7 text-white" />
+                </div>
+                <h4 className="font-bold text-navy mb-2 text-lg">3. Walk In</h4>
+                <p className="text-sm text-gray-600 mb-3">Visit our store directly</p>
+                <div className="w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg font-semibold text-center">
+                  300m from SLIIT
+                </div>
+                <p className="text-xs text-gray-500 mt-2">No pickup needed</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="mt-6 text-center bg-white/50 rounded-lg p-3">
+            <p className="text-sm text-gray-700">
+              💡 <strong>Note:</strong> Already registered? Just call or WhatsApp with your phone number and order details. 
+              We'll handle the rest - pickup, washing, and delivery!
             </p>
           </div>
         </div>
@@ -161,14 +232,38 @@ const Contact = () => {
               </div>
             </div>
 
-            {/* Quick Contact Card */}
-            <div className="bg-gradient-to-br from-orange/10 to-navy/10 rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-orange/20">
-              <h4 className="text-base sm:text-lg font-bold text-navy mb-2 sm:mb-3">
-                Need Immediate Help?
+            {/* Order Now Quick Card */}
+            <div className="bg-gradient-to-br from-orange/10 to-navy/10 rounded-xl sm:rounded-2xl p-5 sm:p-6 border-2 border-orange/30 shadow-lg">
+              <h4 className="text-base sm:text-lg font-bold text-navy mb-2 sm:mb-3 flex items-center gap-2">
+                <span className="text-xl">🚀</span>
+                Place Your Order Now!
               </h4>
               <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                Call us now or visit our location. We're always ready to assist you!
+                Choose your preferred method - we offer pickup & delivery or walk-in service!
               </p>
+              
+              {/* Ordering Methods */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-6 h-6 bg-orange/20 rounded-full flex items-center justify-center">
+                    <Phone className="w-3 h-3 text-orange" />
+                  </div>
+                  <span><strong>Call:</strong> We arrange FREE pickup</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-6 h-6 bg-green-600/20 rounded-full flex items-center justify-center">
+                    <MessageCircle className="w-3 h-3 text-green-600" />
+                  </div>
+                  <span><strong>WhatsApp:</strong> Send order details</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <div className="w-6 h-6 bg-blue-600/20 rounded-full flex items-center justify-center">
+                    <MapPin className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <span><strong>Walk-in:</strong> Bring clothes directly</span>
+                </div>
+              </div>
+              
               <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                 <a 
                   href="tel:+94707006557"
@@ -179,14 +274,14 @@ const Contact = () => {
                   
                   <span className="relative z-10 flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    Call Now
+                    Call to Order
                   </span>
                   
                   {/* Subtle Inner Highlight */}
                   <div className="absolute inset-0 rounded-lg border border-white/20 pointer-events-none"></div>
                 </a>
                 <a 
-                  href="https://wa.me/94707006557"
+                  href="https://wa.me/94707006557?text=Hi%20FoldFox%20Laundry!%20I'd%20like%20to%20place%20an%20order."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-600/90 hover:from-green-600/90 hover:to-green-600/80 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold border border-green-600/30 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
@@ -196,7 +291,7 @@ const Contact = () => {
                   
                   <span className="relative z-10 flex items-center gap-2">
                     <MessageCircle className="w-4 h-4" />
-                    WhatsApp
+                    WhatsApp Order
                   </span>
                   
                   {/* Subtle Inner Highlight */}

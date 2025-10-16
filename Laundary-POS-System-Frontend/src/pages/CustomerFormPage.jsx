@@ -19,7 +19,7 @@ import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { customerService } from '../services/customerService';
 
-// Validation schema
+// Validation schema - Matches backend requirements
 const schema = yup.object({
   fullName: yup
     .string()
@@ -29,10 +29,11 @@ const schema = yup.object({
   email: yup
     .string()
     .email('Invalid email address')
-    .required('Email is required'),
+    .optional() // Email is OPTIONAL in backend
+    .transform((value) => value === '' ? undefined : value), // Convert empty string to undefined
   phoneNumber: yup
     .string()
-    .matches(/^[0-9]{10,15}$/, 'Please enter a valid phone number')
+    .matches(/^[0-9]{10,15}$/, 'Please enter a valid phone number (10-15 digits)')
     .required('Phone number is required'),
   isStudent: yup.boolean(),
   campusId: yup
@@ -43,13 +44,14 @@ const schema = yup.object({
       otherwise: (schema) => schema.optional(),
     }),
   address: yup.object({
-    street: yup.string().required('Street address is required'),
-    city: yup.string().required('City is required'),
-    state: yup.string().required('State is required'),
+    street: yup.string().optional(), // Address fields are OPTIONAL in backend
+    city: yup.string().optional(),
+    state: yup.string().optional(),
     zipCode: yup
       .string()
-      .matches(/^[0-9]{5,6}$/, 'Please enter a valid zip code')
-      .required('Zip code is required'),
+      .matches(/^[0-9]{5,6}$/, 'Please enter a valid zip code (5-6 digits)')
+      .optional()
+      .transform((value) => value === '' ? undefined : value), // Convert empty string to undefined
   }),
   loyaltyPoints: yup
     .number()
@@ -269,13 +271,15 @@ const CustomerFormPage = () => {
                 <div className="md:col-span-2">
                   <Input
                     {...register('email')}
-                    label="Email Address"
+                    label="Email Address (Optional)"
                     type="email"
-                    placeholder="e.g., john.doe@example.com"
+                    placeholder="e.g., customer@example.com"
                     error={errors.email?.message}
                     leftIcon={<EnvelopeIcon className="h-5 w-5 text-gray-400" />}
                   />
-                  <p className="mt-1 text-xs text-gray-500">Used for notifications and receipts</p>
+                  <p className="mt-1 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                    💡 Optional but recommended for order confirmations and receipts via email
+                  </p>
                 </div>
 
                 {isEditing && (
@@ -340,24 +344,30 @@ const CustomerFormPage = () => {
               </div>
             </div>
 
-            {/* Step 3: Address Information */}
+            {/* Step 3: Address Information (Optional) */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3 pb-3 border-b-2 border-green-200">
                 <div className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold text-white bg-green-500">
                   3
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
-                  <p className="text-xs text-gray-500">For delivery and contact purposes</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Address Information (Optional)</h3>
+                  <p className="text-xs text-gray-500">Helpful for pickup & delivery orders</p>
                 </div>
               </div>
 
               <div className="pl-11 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-blue-800">
+                    💡 <strong>Note:</strong> Address is optional. Customers can provide it when placing orders if needed for pickup/delivery.
+                  </p>
+                </div>
+                
                 <Input
                   {...register('address.street')}
-                  label="Street Address"
+                  label="Street Address (Optional)"
                   type="text"
-                  placeholder="e.g., 123 Main Street"
+                  placeholder="e.g., 123 Main Street, Malabe"
                   error={errors.address?.street?.message}
                   leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
                 />
@@ -365,29 +375,28 @@ const CustomerFormPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     {...register('address.city')}
-                    label="City"
+                    label="City (Optional)"
                     type="text"
-                    placeholder="e.g., New York"
+                    placeholder="e.g., Colombo"
                     error={errors.address?.city?.message}
                   />
 
                   <Input
                     {...register('address.state')}
-                    label="State/Province"
+                    label="State/Province (Optional)"
                     type="text"
-                    placeholder="e.g., NY"
+                    placeholder="e.g., Western"
                     error={errors.address?.state?.message}
                   />
 
                   <Input
                     {...register('address.zipCode')}
-                    label="Zip/Postal Code"
+                    label="Zip/Postal Code (Optional)"
                     type="text"
                     placeholder="e.g., 10001"
                     error={errors.address?.zipCode?.message}
                   />
                 </div>
-                <p className="text-xs text-gray-500">Complete address helps with delivery coordination</p>
               </div>
             </div>
 
