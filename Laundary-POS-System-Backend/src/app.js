@@ -36,12 +36,28 @@ if (process.env.FRONTEND_URL) {
   allowedOrigins.push(...frontendUrls);
 }
 
+// In production, also allow Vercel preview deployments
+if (process.env.NODE_ENV === 'production') {
+  // Allow any Vercel deployment URL for the same project
+  allowedOrigins.push(/https:\/\/.*\.vercel\.app$/);
+}
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin matches any allowed origin (string or regex)
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.log('⚠️  Blocked origin:', origin);
