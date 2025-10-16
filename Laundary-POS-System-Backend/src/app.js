@@ -40,7 +40,11 @@ if (process.env.FRONTEND_URL) {
 if (process.env.NODE_ENV === 'production') {
   // Allow any Vercel deployment URL for the same project
   allowedOrigins.push(/https:\/\/.*\.vercel\.app$/);
+  console.log('🔧 CORS: Production mode - allowing all *.vercel.app domains');
+} else {
+  console.log('⚠️  CORS: Development mode - only allowing localhost');
 }
+console.log('✅ CORS: Allowed origins configured:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -136,7 +140,10 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    corsEnabled: process.env.NODE_ENV === 'production',
+    allowedOriginsCount: allowedOrigins.length,
+    requestOrigin: req.headers.origin || 'none'
   });
 });
 
