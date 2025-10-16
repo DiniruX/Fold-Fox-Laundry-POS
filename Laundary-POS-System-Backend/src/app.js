@@ -24,9 +24,35 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS configuration for Vite frontend
+const allowedOrigins = [
+  'http://localhost:5173', // Local development
+  'http://localhost:3000',
+];
+
+// Add production frontend URLs from environment variables
+if (process.env.FRONTEND_URL) {
+  // Support multiple URLs separated by comma
+  const frontendUrls = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+  allowedOrigins.push(...frontendUrls);
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Vite dev server
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('⚠️  Blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
 // Rate limiting
