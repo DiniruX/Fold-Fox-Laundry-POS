@@ -64,16 +64,12 @@ const OrderFormPage = () => {
       pickupAddress: {
         street: '',
         city: '',
-        state: '',
-        zipCode: '',
         notes: '',
       },
       deliveryRequired: false,
       deliveryAddress: {
         street: '',
         city: '',
-        state: '',
-        zipCode: '',
         notes: '',
       },
       specialInstructions: '',
@@ -145,16 +141,12 @@ const OrderFormPage = () => {
         pickupAddress: {
           street: '',
           city: '',
-          state: '',
-          zipCode: '',
           notes: '',
         },
         deliveryRequired: false,
         deliveryAddress: {
           street: '',
           city: '',
-          state: '',
-          zipCode: '',
           notes: '',
         },
         specialInstructions: '',
@@ -722,28 +714,16 @@ const OrderFormPage = () => {
                     <h4 className="text-md font-semibold text-blue-900 mb-3">Pickup Address</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Input
-                        label="Street"
-                        {...register('pickupAddress.street', { required: watchedPickupRequired ? 'Street is required' : false })}
+                        label="Street Address"
+                        {...register('pickupAddress.street', { required: watchedPickupRequired ? 'Street address is required' : false })}
                         error={errors.pickupAddress?.street?.message}
-                        placeholder="Street address"
+                        placeholder="e.g., Room 305, SLIIT Hostel, Malabe"
                       />
                       <Input
                         label="City"
                         {...register('pickupAddress.city', { required: watchedPickupRequired ? 'City is required' : false })}
                         error={errors.pickupAddress?.city?.message}
-                        placeholder="City"
-                      />
-                      <Input
-                        label="State"
-                        {...register('pickupAddress.state', { required: watchedPickupRequired ? 'State is required' : false })}
-                        error={errors.pickupAddress?.state?.message}
-                        placeholder="State"
-                      />
-                      <Input
-                        label="ZIP Code"
-                        {...register('pickupAddress.zipCode', { required: watchedPickupRequired ? 'ZIP is required' : false })}
-                        error={errors.pickupAddress?.zipCode?.message}
-                        placeholder="ZIP code"
+                        placeholder="e.g., Colombo"
                       />
                     </div>
                   </div>
@@ -755,28 +735,16 @@ const OrderFormPage = () => {
                     <h4 className="text-md font-semibold text-green-900 mb-3">Delivery Address</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Input
-                        label="Street"
-                        {...register('deliveryAddress.street', { required: watchedDeliveryRequired ? 'Street is required' : false })}
+                        label="Street Address"
+                        {...register('deliveryAddress.street', { required: watchedDeliveryRequired ? 'Street address is required' : false })}
                         error={errors.deliveryAddress?.street?.message}
-                        placeholder="Street address"
+                        placeholder="e.g., Room 305, SLIIT Hostel, Malabe"
                       />
                       <Input
                         label="City"
                         {...register('deliveryAddress.city', { required: watchedDeliveryRequired ? 'City is required' : false })}
                         error={errors.deliveryAddress?.city?.message}
-                        placeholder="City"
-                      />
-                      <Input
-                        label="State"
-                        {...register('deliveryAddress.state', { required: watchedDeliveryRequired ? 'State is required' : false })}
-                        error={errors.deliveryAddress?.state?.message}
-                        placeholder="State"
-                      />
-                      <Input
-                        label="ZIP Code"
-                        {...register('deliveryAddress.zipCode', { required: watchedDeliveryRequired ? 'ZIP is required' : false })}
-                        error={errors.deliveryAddress?.zipCode?.message}
-                        placeholder="ZIP code"
+                        placeholder="e.g., Colombo"
                       />
                     </div>
                   </div>

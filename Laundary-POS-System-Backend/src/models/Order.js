@@ -104,8 +104,6 @@ const orderSchema = new mongoose.Schema({
     address: {
       street: String,
       city: String,
-      state: String,
-      zipCode: String,
       country: {
         type: String,
         default: 'Sri Lanka'
@@ -141,8 +139,6 @@ const orderSchema = new mongoose.Schema({
   pickupAddress: {
     street: String,
     city: String,
-    state: String,
-    zipCode: String,
     notes: String
   },
   deliveryRequired: {
@@ -152,8 +148,6 @@ const orderSchema = new mongoose.Schema({
   deliveryAddress: {
     street: String,
     city: String,
-    state: String,
-    zipCode: String,
     notes: String
   },
   actualDeliveryDate: {

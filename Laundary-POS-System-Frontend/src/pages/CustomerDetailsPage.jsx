@@ -271,7 +271,7 @@ const CustomerDetailsPage = () => {
                           {customer.address.street}
                         </p>
                         <p className="text-sm text-gray-900">
-                          {customer.address.city}, {customer.address.state} {customer.address.zipCode}
+                          {[customer.address.street, customer.address.city].filter(Boolean).join(', ')}
                         </p>
                       </div>
                     </div>

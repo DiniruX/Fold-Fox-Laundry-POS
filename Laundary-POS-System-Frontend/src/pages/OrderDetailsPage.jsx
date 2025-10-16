@@ -505,8 +505,6 @@ Thank you!`;
                             {[
                               order.customerInfo.address.street,
                               order.customerInfo.address.city,
-                              order.customerInfo.address.state,
-                              order.customerInfo.address.zipCode,
                             ].filter(Boolean).join(', ') || 'N/A'}
                           </p>
                         </div>
@@ -722,8 +720,6 @@ Thank you!`;
                               {[
                                 order.pickupAddress?.street,
                                 order.pickupAddress?.city,
-                                order.pickupAddress?.state,
-                                order.pickupAddress?.zipCode,
                               ].filter(Boolean).join(', ') || 'No address provided'}
                             </p>
                           </div>
@@ -752,8 +748,6 @@ Thank you!`;
                               {[
                                 order.deliveryAddress?.street,
                                 order.deliveryAddress?.city,
-                                order.deliveryAddress?.state,
-                                order.deliveryAddress?.zipCode,
                               ].filter(Boolean).join(', ') || 'No address provided'}
                             </p>
                           </div>

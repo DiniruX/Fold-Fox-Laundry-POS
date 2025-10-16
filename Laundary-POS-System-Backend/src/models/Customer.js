@@ -17,11 +17,9 @@ const customerSchema = new mongoose.Schema({
   address: {
     street: String,
     city: String,
-    state: String,
-    zipCode: String,
-    isDeliveryAddress: {
-      type: Boolean,
-      default: false
+    country: {
+      type: String,
+      default: 'Sri Lanka'
     }
   },
   campusId: {

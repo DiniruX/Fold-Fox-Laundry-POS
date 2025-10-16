@@ -46,12 +46,6 @@ const schema = yup.object({
   address: yup.object({
     street: yup.string().optional(), // Address fields are OPTIONAL in backend
     city: yup.string().optional(),
-    state: yup.string().optional(),
-    zipCode: yup
-      .string()
-      .matches(/^[0-9]{5,6}$/, 'Please enter a valid zip code (5-6 digits)')
-      .optional()
-      .transform((value) => value === '' ? undefined : value), // Convert empty string to undefined
   }),
   loyaltyPoints: yup
     .number()
@@ -94,8 +88,6 @@ const CustomerFormPage = () => {
       address: {
         street: '',
         city: '',
-        state: '',
-        zipCode: '',
       },
       loyaltyPoints: 0,
     },
@@ -143,8 +135,6 @@ const CustomerFormPage = () => {
         address: {
           street: customer.address?.street || '',
           city: customer.address?.city || '',
-          state: customer.address?.state || '',
-          zipCode: customer.address?.zipCode || '',
         },
         loyaltyPoints: customer.loyaltyPoints || 0,
       });
@@ -363,38 +353,22 @@ const CustomerFormPage = () => {
                   </p>
                 </div>
                 
-                <Input
-                  {...register('address.street')}
-                  label="Street Address (Optional)"
-                  type="text"
-                  placeholder="e.g., 123 Main Street, Malabe"
-                  error={errors.address?.street?.message}
-                  leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    {...register('address.street')}
+                    label="Street Address (Optional)"
+                    type="text"
+                    placeholder="e.g., Room 305, SLIIT Hostel, Malabe"
+                    error={errors.address?.street?.message}
+                    leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
+                  />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     {...register('address.city')}
                     label="City (Optional)"
                     type="text"
                     placeholder="e.g., Colombo"
                     error={errors.address?.city?.message}
-                  />
-
-                  <Input
-                    {...register('address.state')}
-                    label="State/Province (Optional)"
-                    type="text"
-                    placeholder="e.g., Western"
-                    error={errors.address?.state?.message}
-                  />
-
-                  <Input
-                    {...register('address.zipCode')}
-                    label="Zip/Postal Code (Optional)"
-                    type="text"
-                    placeholder="e.g., 10001"
-                    error={errors.address?.zipCode?.message}
                   />
                 </div>
               </div>

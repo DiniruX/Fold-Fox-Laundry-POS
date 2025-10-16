@@ -38,8 +38,6 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
     university: '',
     streetAddress: '',
     city: '',
-    state: '',
-    zipCode: '',
     studentId: ''
   });
   
@@ -137,9 +135,7 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
         email: formData.email || undefined,
         address: {
           street: formData.streetAddress,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode
+          city: formData.city
         },
         isStudent: formData.isStudent,
         studentId: formData.isStudent ? formData.studentId : null,
@@ -303,34 +299,18 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                    City <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                    placeholder="Colombo"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
-                    Zip Code <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
-                    placeholder="10001"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                  City <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-orange focus:ring-4 focus:ring-orange/10 transition-all duration-200 text-gray-900 placeholder-gray-400 text-base sm:text-lg"
+                  placeholder="Colombo"
+                />
               </div>
             </div>
           </div>
@@ -427,7 +407,7 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                 <h4 className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 sm:mb-3">Delivery Address</h4>
                 <div className="space-y-2">
                   <p className="text-xs sm:text-sm font-medium text-gray-900">{formData.streetAddress}</p>
-                  <p className="text-xs sm:text-sm text-gray-600">{formData.city}, {formData.zipCode || 'N/A'}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{formData.city}</p>
                 </div>
               </div>
               
@@ -595,8 +575,6 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
                     university: '',
                     streetAddress: '',
                     city: '',
-                    state: '',
-                    zipCode: '',
                     studentId: ''
                   });
                   setCurrentStep(1);
