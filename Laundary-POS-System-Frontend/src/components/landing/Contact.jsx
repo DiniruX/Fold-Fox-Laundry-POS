@@ -27,16 +27,16 @@ const Contact = () => {
     {
       icon: Phone,
       title: "Phone",
-      detail: "+94 77 123 4567",
+      detail: "070 700 6557",
       subdetail: "Call us anytime for inquiries",
-      onClick: () => window.open('tel:+94771234567', '_self')
+      onClick: () => window.open('tel:+94707006557', '_self')
     },
     {
       icon: Mail,
       title: "Email",
-      detail: "info@foldfoxlaundry.com",
+      detail: "contact.foldfox@gmail.com",
       subdetail: "We'll respond within 24 hours",
-      onClick: () => window.open('mailto:info@foldfoxlaundry.com', '_self')
+      onClick: () => window.open('mailto:contact.foldfox@gmail.com', '_self')
     },
     {
       icon: Clock,
@@ -66,7 +66,7 @@ const Contact = () => {
     {
       icon: MessageCircle,
       name: "WhatsApp",
-      url: "https://wa.me/94771234567",
+      url: "https://wa.me/94707006557",
       color: "hover:bg-green-600"
     }
   ];
@@ -171,7 +171,7 @@ const Contact = () => {
               </p>
               <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                 <a 
-                  href="tel:+94771234567"
+                  href="tel:+94707006557"
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange to-orange/90 hover:from-orange/90 hover:to-orange/80 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold border border-orange/30 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
                 >
                   {/* Button Background Animation */}
@@ -186,7 +186,7 @@ const Contact = () => {
                   <div className="absolute inset-0 rounded-lg border border-white/20 pointer-events-none"></div>
                 </a>
                 <a 
-                  href="https://wa.me/94771234567"
+                  href="https://wa.me/94707006557"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-600/90 hover:from-green-600/90 hover:to-green-600/80 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold border border-green-600/30 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group"
