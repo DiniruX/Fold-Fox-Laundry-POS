@@ -22,7 +22,7 @@ const orderItemSchema = new mongoose.Schema({
   },
   clothingCategory: {
     type: String,
-    enum: ['normal_clothes', 'bed_sheets', 'curtains', 'suits', 'jeans', 'blankets', 'towels', 'other'],
+    enum: ['normal_clothes', 'bed_sheets', 'towels', 'blazers', 'saree', 'curtains', 'pillowcases', 'suits', 'jeans', 'blankets', 'other'],
     default: 'normal_clothes'
   },
   unitPrice: {

@@ -71,7 +71,7 @@ export const SERVICE_PRICE_TYPES = {
   PER_PIECE: 'per_piece'
 };
 
-// Clothing Categories for per_piece pricing
+// Clothing Categories for pricing
 export const CLOTHING_CATEGORIES = {
   NORMAL_CLOTHES: 'normal_clothes',
   BED_SHEETS: 'bed_sheets',
@@ -79,7 +79,11 @@ export const CLOTHING_CATEGORIES = {
   BLAZERS: 'blazers',
   SAREE: 'saree',
   CURTAINS: 'curtains',
-  PILLOWCASES: 'pillowcases'
+  PILLOWCASES: 'pillowcases',
+  SUITS: 'suits',
+  JEANS: 'jeans',
+  BLANKETS: 'blankets',
+  OTHER: 'other'
 };
 
 // Staff Departments

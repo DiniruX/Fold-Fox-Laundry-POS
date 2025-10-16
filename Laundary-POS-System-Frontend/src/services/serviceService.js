@@ -223,8 +223,12 @@ export const getClothingCategoryLabel = (category) => {
     saree: 'Saree',
     curtains: 'Curtains',
     pillowcases: 'Pillowcases',
+    suits: 'Suits',
+    jeans: 'Jeans',
+    blankets: 'Blankets',
+    other: 'Other',
   };
-  return labels[category] || category;
+  return labels[category] || category?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 export const getStatusBadgeColor = (isActive) => {

@@ -69,7 +69,7 @@ const validateOrder = [
     .withMessage('Weight must be a non-negative number'),
   body('items.*.clothingCategory')
     .optional()
-    .isIn(['normal_clothes', 'bed_sheets', 'curtains', 'suits', 'jeans', 'blankets', 'towels', 'other'])
+    .isIn(['normal_clothes', 'bed_sheets', 'towels', 'blazers', 'saree', 'curtains', 'pillowcases', 'suits', 'jeans', 'blankets', 'other'])
     .withMessage('Invalid clothing category'),
   body('pickupRequired')
     .optional()
