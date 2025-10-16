@@ -10,24 +10,21 @@ const SERVICES = [
     title: "Wash and Dry",
     description: "Complete laundry service with washing and drying for everyday clothes",
     image: "/service1.webp",
-    link: "#wash-and-dry",
-    price: "From Rs. 200/kg"
+    link: "#wash-and-dry"
   },
   {
     id: 2,
     title: "Washing",
     description: "Professional washing service for all types of garments",
     image: "/service2.webp",
-    link: "#washing",
-    price: "From Rs. 150/kg"
+    link: "#washing"
   },
   {
     id: 3,
     title: "Dry Cleaning",
     description: "Expert dry cleaning for delicate fabrics and formal wear",
     image: "/service3.webp",
-    link: "#dry-cleaning",
-    price: "From Rs. 300/item"
+    link: "#dry-cleaning"
   }
 ];
 
@@ -138,9 +135,6 @@ const Services = ({ onRegisterClick }) => {
                         <h3 className="text-2xl font-bold text-white leading-tight tracking-tight">
                           {service.title}
                         </h3>
-                        <div className="text-orange font-semibold text-sm mt-1">
-                          {service.price}
-                        </div>
                       </div>
 
                       <div className={`absolute inset-0 flex flex-col justify-end p-6 z-30 transition-all duration-600 ease-out ${
@@ -152,12 +146,9 @@ const Services = ({ onRegisterClick }) => {
                           <h3 className="text-3xl font-bold text-white mb-3 leading-tight tracking-tight">
                             {service.title}
                           </h3>
-                          <p className="text-white/90 text-lg leading-relaxed mb-4 font-light max-w-xs">
+                          <p className="text-white/90 text-lg leading-relaxed mb-6 font-light max-w-xs">
                             {service.description}
                           </p>
-                          <div className="text-orange font-bold text-lg mb-6">
-                            {service.price}
-                          </div>
                           
                           <a
                             href={service.link}
@@ -241,13 +232,9 @@ const Services = ({ onRegisterClick }) => {
                         <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight drop-shadow-lg">
                           {service.title}
                         </h3>
-                        <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-3">
+                        <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-4">
                           {service.description}
                         </p>
-                        <div className="text-orange font-bold text-base mb-4 flex items-center gap-2">
-                          <div className="w-1 h-4 bg-orange rounded-full"></div>
-                          {service.price}
-                        </div>
                         
                         <a
                           href={service.link}
