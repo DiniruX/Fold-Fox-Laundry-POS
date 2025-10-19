@@ -9,11 +9,29 @@
 # This should point to your BACKEND URL (not frontend URL!)
 VITE_API_URL=https://your-backend-name.vercel.app/api
 
+# ----------------------------------
+# BUSINESS CONFIGURATION (Optional)
+# ----------------------------------
+VITE_BUSINESS_NAME=Your Business Name
+VITE_BUSINESS_ADDRESS=Your Business Address, City, State, Country
+VITE_BUSINESS_PHONE=+1 234 567 8900
+VITE_BUSINESS_EMAIL=info@yourbusiness.com
+VITE_CURRENCY=USD
+
+# ----------------------------------
+# BANK DETAILS (Optional)
+# ----------------------------------
+VITE_BANK_NAME=Your Bank Name
+VITE_BANK_ACCOUNT_NAME=Your Business Name
+VITE_BANK_ACCOUNT_NUMBER=1234567890
+VITE_BANK_BRANCH=Main Branch
+VITE_BANK_SWIFT_CODE=BANKUS33
+
 # ==================================
 # EXAMPLE VALUES:
 # ==================================
-# If your backend is deployed at: fox-fold-laundary-pos.vercel.app
-# Then set: VITE_API_URL=https://fox-fold-laundary-pos.vercel.app/api
+# If your backend is deployed at: your-backend.vercel.app
+# Then set: VITE_API_URL=https://your-backend.vercel.app/api
 #
 # IMPORTANT: 
 # - Must use HTTPS (not HTTP)

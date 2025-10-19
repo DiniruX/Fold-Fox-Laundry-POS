@@ -12,7 +12,32 @@ JWT_REFRESH_SECRET=your-super-secret-refresh-key-min-32-characters-long
 NODE_ENV=production
 
 # ----------------------------------
-# OPTIONAL VARIABLES
+# BUSINESS CONFIGURATION
+# ----------------------------------
+BUSINESS_NAME=Your Business Name
+BUSINESS_ADDRESS=Your Business Address, City, State, Country
+BUSINESS_PHONE=+1 234 567 8900
+BUSINESS_EMAIL=info@yourbusiness.com
+CURRENCY=USD
+
+# ----------------------------------
+# EMAIL SERVICE (Optional)
+# ----------------------------------
+EMAIL_SERVICE=gmail
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+
+# ----------------------------------
+# BANK DETAILS (Optional)
+# ----------------------------------
+BANK_NAME=Your Bank Name
+BANK_ACCOUNT_NAME=Your Business Name
+BANK_ACCOUNT_NUMBER=1234567890
+BANK_BRANCH=Main Branch
+BANK_SWIFT_CODE=BANKUS33
+
+# ----------------------------------
+# OTHER OPTIONAL VARIABLES
 # ----------------------------------
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
