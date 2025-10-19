@@ -35,7 +35,6 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
     phone: '',
     email: '',
     isStudent: false,
-    university: '',
     streetAddress: '',
     city: '',
     studentId: ''
@@ -139,7 +138,6 @@ const PopupRegistrationForm = ({ isOpen = true, onClose = () => {} }) => {
         },
         isStudent: formData.isStudent,
         studentId: formData.isStudent ? formData.studentId : null,
-        university: formData.isStudent ? formData.university : null,
         campaignCode: campaignCode
       };
 

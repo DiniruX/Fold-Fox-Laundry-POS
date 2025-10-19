@@ -29,10 +29,14 @@ const createCustomer = async (req, res) => {
       });
     }
     
-    // Check if it's a student based on campus ID
-    if (customerData.campusId) {
+    // Check if it's a student based on campus ID or isStudent flag
+    const isStudent = !!(customerData.campusId || customerData.isStudent);
+    if (isStudent) {
       customerData.isStudent = true;
     }
+    
+    // Set student discount eligibility
+    customerData.eligibleForStudentDiscount = isStudent;
     
     // Remove empty email field to avoid validation issues
     if (customerData.email && customerData.email.trim() === '') {
@@ -41,10 +45,24 @@ const createCustomer = async (req, res) => {
     
     const customer = await Customer.create(customerData);
     
+    // Get discount information for response
+    const discountInfo = customer.getApplicableDiscount();
+    
     res.status(201).json({
       success: true,
       message: 'Customer created successfully',
-      customer
+      data: {
+        customer: {
+          id: customer._id,
+          fullName: customer.fullName,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email,
+          isStudent: customer.isStudent,
+          campusId: customer.campusId,
+          eligibleForStudentDiscount: customer.eligibleForStudentDiscount,
+          discountInfo: discountInfo
+        }
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -221,10 +239,14 @@ const updateCustomer = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    // Check if campus ID is provided to determine student status
-    if (updateData.campusId) {
+    // Check if it's a student based on campus ID or isStudent flag
+    const isStudent = !!(updateData.campusId || updateData.isStudent);
+    if (isStudent) {
       updateData.isStudent = true;
     }
+    
+    // Set student discount eligibility
+    updateData.eligibleForStudentDiscount = isStudent;
     
     // Remove empty email field to avoid validation issues
     if (updateData.email && updateData.email.trim() === '') {
@@ -244,10 +266,24 @@ const updateCustomer = async (req, res) => {
       });
     }
     
+    // Get discount information for response
+    const discountInfo = customer.getApplicableDiscount();
+    
     res.json({
       success: true,
       message: 'Customer updated successfully',
-      customer
+      data: {
+        customer: {
+          id: customer._id,
+          fullName: customer.fullName,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email,
+          isStudent: customer.isStudent,
+          campusId: customer.campusId,
+          eligibleForStudentDiscount: customer.eligibleForStudentDiscount,
+          discountInfo: discountInfo
+        }
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -779,11 +815,10 @@ const registerFromLanding = async (req, res) => {
       fullName,
       email,
       phone,
-      phoneNumber, // Accept both phone and phoneNumber
+      phoneNumber,
       address,
       isStudent,
       studentId,
-      university,
       campaignCode
     } = req.body;
 
@@ -799,15 +834,14 @@ const registerFromLanding = async (req, res) => {
     const customerPhone = phone || phoneNumber;
 
     // Check if customer already exists
-    // Optimized: Only select _id field and use lean() for faster query
     const existingCustomer = await Customer.findOne({
       $or: [
         { phoneNumber: customerPhone },
         ...(email ? [{ email: email.toLowerCase() }] : [])
       ]
     })
-    .select('_id') // Only select _id, we don't need full document
-    .lean() // Return plain JS object instead of Mongoose document (faster)
+    .select('_id')
+    .lean()
     .exec();
 
     if (existingCustomer) {
@@ -820,7 +854,6 @@ const registerFromLanding = async (req, res) => {
     // Verify campaign code (if provided)
     let isCampaignValid = false;
     if (campaignCode) {
-      // Valid campaign codes
       const validCampaigns = ['GRAND_OPENING_2025', 'STUDENT_WELCOME_2025', 'CAMPAIGN2025'];
       isCampaignValid = validCampaigns.includes(campaignCode.toUpperCase());
     }
@@ -835,8 +868,7 @@ const registerFromLanding = async (req, res) => {
       // Student information
       isStudent: isStudent || false,
       studentId: isStudent ? studentId : null,
-      university: isStudent ? university : null,
-      campusId: isStudent ? studentId : null, // Use studentId as campusId
+      campusId: isStudent ? studentId : null,
       
       // Campaign tracking
       registeredViaCampaign: isCampaignValid,

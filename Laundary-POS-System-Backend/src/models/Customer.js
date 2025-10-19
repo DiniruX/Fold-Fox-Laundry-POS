@@ -36,10 +36,6 @@ const customerSchema = new mongoose.Schema({
     trim: true,
     uppercase: true
   },
-  university: {
-    type: String,
-    trim: true
-  },
   email: {
     type: String,
     lowercase: true,

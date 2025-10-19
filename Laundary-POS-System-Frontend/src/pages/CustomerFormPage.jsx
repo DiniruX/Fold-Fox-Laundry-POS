@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
+import { validateStudentId, validateStudentIdRealtime, formatStudentId } from '../utils/studentIdValidator';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -29,8 +30,8 @@ const schema = yup.object({
   email: yup
     .string()
     .email('Invalid email address')
-    .optional() // Email is OPTIONAL in backend
-    .transform((value) => value === '' ? undefined : value), // Convert empty string to undefined
+    .optional()
+    .transform((value) => value === '' ? undefined : value),
   phoneNumber: yup
     .string()
     .matches(/^[0-9]{10,15}$/, 'Please enter a valid phone number (10-15 digits)')
@@ -40,11 +41,11 @@ const schema = yup.object({
     .string()
     .when('isStudent', {
       is: true,
-      then: (schema) => schema.required('Campus ID is required for students'),
+      then: (schema) => schema.required('Student ID is required for students'),
       otherwise: (schema) => schema.optional(),
     }),
   address: yup.object({
-    street: yup.string().optional(), // Address fields are OPTIONAL in backend
+    street: yup.string().optional(),
     city: yup.string().optional(),
   }),
   loyaltyPoints: yup
@@ -103,12 +104,20 @@ const CustomerFormPage = () => {
     },
     onSuccess: (result) => {
       if (result.success) {
-        setMessage({ type: 'success', text: result.message });
+        const customer = result.data?.customer;
+        let successMessage = result.message;
+        
+        // Add discount information to success message
+        if (customer?.isStudent && customer?.eligibleForStudentDiscount) {
+          successMessage += ` Student discount (10%) will be applied to all orders.`;
+        }
+        
+        setMessage({ type: 'success', text: successMessage });
         setTimeout(() => {
           navigate('/customers');
-        }, 1500);
+        }, 2000);
       } else {
-        setMessage({ type: 'error', text: result.error });
+        setMessage({ type: 'error', text: result.error || 'Failed to save customer' });
       }
     },
     onError: (error) => {
@@ -319,16 +328,83 @@ const CustomerFormPage = () => {
                 </div>
 
                 {isStudent && (
-                  <div className="animate-fadeIn">
-                    <Input
-                      {...register('campusId')}
-                      label="Campus/Student ID"
-                      type="text"
-                      placeholder="e.g., STU123456"
-                      error={errors.campusId?.message}
-                      leftIcon={<BuildingOfficeIcon className="h-5 w-5 text-gray-400" />}
-                    />
-                    <p className="mt-1 text-xs text-gray-500">Required for student verification</p>
+                  <div className="animate-fadeIn space-y-4">
+                    {/* Student ID with Validation */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Student ID Number *
+                      </label>
+                      <div className="relative">
+                        <input
+                          {...register('campusId', {
+                            required: isStudent ? 'Student ID is required' : false,
+                            validate: (value) => {
+                              if (!isStudent) return true;
+                              if (!value) return 'Student ID is required';
+                              const validation = validateStudentId(value, 'Other');
+                              return validation.isValid || validation.message;
+                            }
+                          })}
+                          type="text"
+                          placeholder="Enter your student ID"
+                          className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            errors.campusId ? 'border-red-300' : 'border-gray-300'
+                          }`}
+                          onChange={(e) => {
+                            const formatted = formatStudentId(e.target.value);
+                            e.target.value = formatted;
+                            register('campusId').onChange(e);
+                          }}
+                        />
+                        <BuildingOfficeIcon className="h-5 w-5 text-gray-400 absolute right-3 top-2.5" />
+                      </div>
+                      
+                      {/* Real-time validation feedback */}
+                      {isStudent && watch('campusId') && (
+                        <div className="mt-2">
+                          {(() => {
+                            const validation = validateStudentIdRealtime(watch('campusId'), 'Other');
+                            return (
+                              <div className={`text-xs flex items-center ${
+                                validation.status === 'valid' ? 'text-green-600' : 
+                                validation.status === 'invalid' ? 'text-red-600' : 'text-gray-500'
+                              }`}>
+                                <span className={`w-2 h-2 rounded-full mr-2 ${
+                                  validation.status === 'valid' ? 'bg-green-500' : 
+                                  validation.status === 'invalid' ? 'bg-red-500' : 'bg-gray-400'
+                                }`}></span>
+                                {validation.message}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
+                      {errors.campusId && (
+                        <p className="mt-1 text-sm text-red-600">{errors.campusId.message}</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Required for student verification and discount eligibility
+                      </p>
+                    </div>
+
+                    {/* Student Discount Preview */}
+                    {isStudent && watch('campusId') && 
+                     validateStudentIdRealtime(watch('campusId'), 'Other').status === 'valid' && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-green-900">Student Discount Eligible!</p>
+                            <p className="text-xs text-green-700">
+                              This customer will receive a 10% discount on all orders
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -374,6 +450,22 @@ const CustomerFormPage = () => {
               </div>
             </div>
 
+            {/* Notification Messages */}
+            {message.text && (
+              <div className={`p-4 rounded-lg border-2 ${
+                message.type === 'success' 
+                  ? 'bg-green-50 border-green-200 text-green-800' 
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                  <p className="text-sm font-medium">{message.text}</p>
+                </div>
+              </div>
+            )}
+
             {/* Enhanced Form Actions */}
             <div className="flex justify-between items-center pt-6 border-t-2 border-gray-200">
               <p className="text-xs text-gray-500">
@@ -408,4 +500,3 @@ const CustomerFormPage = () => {
 };
 
 export default CustomerFormPage;
-
