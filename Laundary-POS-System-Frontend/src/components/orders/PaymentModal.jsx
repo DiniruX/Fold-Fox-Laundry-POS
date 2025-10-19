@@ -452,7 +452,7 @@ Please use order number as reference.`;
   };
 
   const copySMSMessage = () => {
-    const businessName = 'Fast Laundry Services'; // You can get this from env or config
+    const businessName = import.meta.env.VITE_BUSINESS_NAME;
     
     let extraItemsText = '';
     if (extraItems.length > 0) {

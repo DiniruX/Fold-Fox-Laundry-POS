@@ -58,7 +58,7 @@ const register = async (req, res) => {
     
     res.status(201).json({
       success: true,
-      message: 'Account created successfully! Welcome to Fold Fox Laundry',
+      message: `Account created successfully! Welcome to ${process.env.BUSINESS_NAME}`,
       token,
       refreshToken,
       user: {

@@ -122,11 +122,11 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
         <div ref={receiptRef} className="bg-white p-6 border border-gray-200 rounded-lg">
           {/* Header */}
           <div className="header">
-            <div className="business-name">Fold Fox Laundry</div>
+            <div className="business-name">{import.meta.env.VITE_BUSINESS_NAME}</div>
             <div className="business-address">
-              123 Main Street, Colombo 01, Sri Lanka<br />
-              Phone: 070 700 6557<br />
-              Email: contact.foldfox@gmail.com
+              {import.meta.env.VITE_BUSINESS_ADDRESS}<br />
+              Phone: {import.meta.env.VITE_BUSINESS_PHONE}<br />
+              Email: {import.meta.env.VITE_BUSINESS_EMAIL}
             </div>
           </div>
 
@@ -318,9 +318,9 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
 
           {/* Footer */}
           <div className="footer">
-            <div>Thank you for choosing Fold Fox Laundry!</div>
+            <div>Thank you for choosing {import.meta.env.VITE_BUSINESS_NAME}!</div>
             <div>Please keep this receipt for your records.</div>
-            <div>For inquiries, call 070 700 6557</div>
+            <div>For inquiries, call {import.meta.env.VITE_BUSINESS_PHONE}</div>
           </div>
         </div>
 

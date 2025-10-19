@@ -151,7 +151,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api', (req, res) => {
   res.json({
     success: true,
-    message: 'Fold Fox Laundry POS API',
+    message: `${process.env.BUSINESS_NAME} API`,
     version: '1.0.0',
     endpoints: {
       auth: '/api/auth',

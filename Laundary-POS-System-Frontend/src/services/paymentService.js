@@ -97,11 +97,11 @@ export const validateTransactionId = (transactionId) => {
 export const getBankAccountDetails = () => {
   // This could be fetched from a configuration service or database
   return {
-    bankName: "Commercial Bank of Sri Lanka",
-    accountName: "Fast Laundry Services",
-    accountNumber: "1234567890",
-    branch: "Colombo Main Branch",
-    swiftCode: "CBCYLKLX",
+    bankName: import.meta.env.VITE_BANK_NAME,
+    accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || import.meta.env.VITE_BUSINESS_NAME,
+    accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER,
+    branch: import.meta.env.VITE_BANK_BRANCH,
+    swiftCode: import.meta.env.VITE_BANK_SWIFT_CODE,
     instructions: "Please include your order number as reference when making the transfer."
   };
 };

@@ -94,7 +94,7 @@ const sendEmail = async (email, subject, text, html = null) => {
     }
 
     const mailOptions = {
-      from: `${process.env.BUSINESS_NAME || 'Fast Laundry Services'} <${process.env.EMAIL_USER}>`,
+      from: `${process.env.BUSINESS_NAME} <${process.env.EMAIL_USER}>`,
       to: email,
       subject: subject,
       text: text,
@@ -133,8 +133,8 @@ const sendEmail = async (email, subject, text, html = null) => {
  */
 const sendBankAccountDetails = async ({ email, orderNumber, amount, bankDetails }) => {
   try {
-    const businessName = process.env.BUSINESS_NAME || 'Fast Laundry Services';
-    const currency = process.env.CURRENCY || 'LKR';
+    const businessName = process.env.BUSINESS_NAME;
+    const currency = process.env.CURRENCY;
 
     // Email HTML content
     const emailHtml = `
@@ -287,7 +287,7 @@ ${businessName}`;
  */
 const sendPickupScheduledEmail = async ({ email, orderNumber, customerName, pickupAddress }) => {
   try {
-    const businessName = process.env.BUSINESS_NAME || 'Fast Laundry Services';
+    const businessName = process.env.BUSINESS_NAME;
 
     // Format pickup address
     const addressStr = pickupAddress 
@@ -414,8 +414,8 @@ ${process.env.BUSINESS_EMAIL ? 'Email: ' + process.env.BUSINESS_EMAIL : ''}`;
  */
 const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAmount, orderDetails }) => {
   try {
-    const businessName = process.env.BUSINESS_NAME || 'Fast Laundry Services';
-    const currency = process.env.CURRENCY || 'LKR';
+    const businessName = process.env.BUSINESS_NAME;
+    const currency = process.env.CURRENCY;
 
     // Build items list if order details provided
     let itemsList = '';
@@ -633,11 +633,11 @@ const sendReceipt = async ({ email, orderNumber, customerName, order }) => {
       };
     }
 
-    const businessName = process.env.BUSINESS_NAME || 'Fold Fox Laundry';
-    const businessAddress = process.env.BUSINESS_ADDRESS || '123 Main Street, Colombo 01, Sri Lanka';
-    const businessPhone = process.env.BUSINESS_PHONE || '+94 11 234 5678';
-    const businessEmail = process.env.BUSINESS_EMAIL || 'info@foldfoxlaundry.com';
-    const currency = process.env.CURRENCY || 'LKR';
+    const businessName = process.env.BUSINESS_NAME;
+    const businessAddress = process.env.BUSINESS_ADDRESS;
+    const businessPhone = process.env.BUSINESS_PHONE;
+    const businessEmail = process.env.BUSINESS_EMAIL;
+    const currency = process.env.CURRENCY;
 
     // Format date
     const formatDate = (date) => {

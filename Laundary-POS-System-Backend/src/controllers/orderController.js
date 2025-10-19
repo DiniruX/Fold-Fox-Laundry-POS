@@ -1271,11 +1271,11 @@ const sendBankDetails = async (req, res) => {
 
     // Get bank account details from environment or configuration
     const bankDetails = {
-      bankName: process.env.BANK_NAME || 'Commercial Bank of Sri Lanka',
-      accountName: process.env.BANK_ACCOUNT_NAME || 'Fast Laundry Services',
-      accountNumber: process.env.BANK_ACCOUNT_NUMBER || '1234567890',
-      branch: process.env.BANK_BRANCH || 'Colombo Main Branch',
-      swiftCode: process.env.BANK_SWIFT_CODE || 'CBCYLKLX'
+      bankName: process.env.BANK_NAME,
+      accountName: process.env.BANK_ACCOUNT_NAME || process.env.BUSINESS_NAME,
+      accountNumber: process.env.BANK_ACCOUNT_NUMBER,
+      branch: process.env.BANK_BRANCH,
+      swiftCode: process.env.BANK_SWIFT_CODE
     };
 
     // Send bank details to customer via email

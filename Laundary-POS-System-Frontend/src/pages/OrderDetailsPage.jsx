@@ -140,7 +140,7 @@ Total: ${formatOrderAmount(order.totalAmount)}
 
   // Copy Email 1: Pickup Scheduled SMS Message
   const copyPickupScheduledSMS = () => {
-    const businessName = 'Fast Laundry Services'; // Can get from env or config
+    const businessName = import.meta.env.VITE_BUSINESS_NAME;
     const address = order.pickupAddress 
       ? `${order.pickupAddress.street || ''}, ${order.pickupAddress.city || ''}`.trim()
       : 'your address';
@@ -165,8 +165,8 @@ Questions? Call us!`;
 
   // Copy Email 2: Order Confirmed SMS Message
   const copyOrderConfirmedSMS = () => {
-    const businessName = 'Fast Laundry Services';
-    const currency = 'LKR';
+    const businessName = import.meta.env.VITE_BUSINESS_NAME;
+    const currency = import.meta.env.VITE_CURRENCY;
     
     // Build items list (short format for SMS)
     let itemsList = '';

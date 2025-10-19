@@ -34,9 +34,9 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email",
-      detail: "contact.foldfox@gmail.com",
+      detail: import.meta.env.VITE_BUSINESS_EMAIL,
       subdetail: "We'll respond within 24 hours",
-      onClick: () => window.open('mailto:contact.foldfox@gmail.com', '_self')
+      onClick: () => window.open(`mailto:${import.meta.env.VITE_BUSINESS_EMAIL}`, '_self')
     },
     {
       icon: Clock,

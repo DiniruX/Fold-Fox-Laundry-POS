@@ -11,7 +11,7 @@ const generateReceiptPDF = (order) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
       // Header
-      doc.fontSize(20).text('Fold Fox Laundry', { align: 'center' });
+      doc.fontSize(20).text(process.env.BUSINESS_NAME, { align: 'center' });
       doc.fontSize(12).text('Receipt', { align: 'center' });
       doc.moveDown();
 
@@ -69,7 +69,7 @@ const generateReceiptPDF = (order) => {
       }
 
       doc.moveDown();
-      doc.text('Thank you for choosing Fold Fox Laundry!', { align: 'center' });
+      doc.text(`Thank you for choosing ${process.env.BUSINESS_NAME}!`, { align: 'center' });
 
       doc.end();
     } catch (error) {
