@@ -836,16 +836,14 @@ const addPayment = async (req, res) => {
   }
 };
 
-// Delete order (soft delete)
+// Delete order (hard delete - admin only)
 const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
+    const { force = false } = req.query; // Optional force parameter
 
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { isDeleted: true },
-      { new: true }
-    );
+    const order = await Order.findById(id)
+      .populate('customer', 'fullName phoneNumber email');
 
     if (!order) {
       return res.status(404).json({
@@ -854,11 +852,59 @@ const deleteOrder = async (req, res) => {
       });
     }
 
+    // Safety checks before hard delete
+    if (order.paidAmount > 0 && !force) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete order with payments. Refund payments first or use force=true parameter.',
+        orderPhase: order.orderPhase,
+        paidAmount: order.paidAmount
+      });
+    }
+
+    if ((order.orderPhase === 'processing' || order.orderPhase === 'completed') && !force) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete order that is being processed or completed. Cancel the order first or use force=true.',
+        orderPhase: order.orderPhase
+      });
+    }
+
+    // Log deletion for audit trail
+    console.log(`[DELETE ORDER] Admin ${req.user.id} is permanently deleting order ${order.orderNumber}`, {
+      orderId: order._id,
+      customerId: order.customer?._id,
+      totalAmount: order.totalAmount,
+      paidAmount: order.paidAmount,
+      status: order.status,
+      phase: order.orderPhase
+    });
+
+    // If order had loyalty points, revert them from customer
+    if (order.customer && order.loyaltyPointsEarned > 0) {
+      await Customer.findByIdAndUpdate(order.customer._id, {
+        $inc: { 
+          loyaltyPoints: -order.loyaltyPointsEarned,
+          totalOrders: -1,
+          totalSpent: -order.totalAmount
+        }
+      });
+    }
+
+    // HARD DELETE - permanently remove from database
+    await Order.findByIdAndDelete(id);
+
     res.json({
       success: true,
-      message: 'Order deleted successfully'
+      message: 'Order permanently deleted from database',
+      deletedOrder: {
+        orderNumber: order.orderNumber,
+        customerId: order.customer?._id,
+        totalAmount: order.totalAmount
+      }
     });
   } catch (error) {
+    console.error('[DELETE ORDER ERROR]', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete order',

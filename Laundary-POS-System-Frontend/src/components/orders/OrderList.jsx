@@ -30,6 +30,7 @@ import { getStatusLabel } from '../../services/serviceService';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import { useAuth } from '../../hooks/useAuth';
 
 // Helper function to get order phase label and styling
 const getOrderPhaseInfo = (phase) => {
@@ -43,7 +44,7 @@ const getOrderPhaseInfo = (phase) => {
   return phaseMap[phase] || { label: 'Unknown', color: 'bg-gray-400', textColor: 'text-white', icon: '❓' };
 };
 
-const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment }) => {
+const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder }) => {
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -57,6 +58,10 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment }) => {
 
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Get current user for role check
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const {
     data: response,
@@ -555,6 +560,20 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment }) => {
                           >
                             <PrinterIcon className="h-4 w-4" />
                           </button>
+                          {isAdmin && onDeleteOrder && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete order ${order.orderNumber}? This cannot be undone!`)) {
+                                  onDeleteOrder(order);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-red-100 text-red-600 hover:text-red-700 transition-colors"
+                              title="Delete Order (Admin Only)"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>

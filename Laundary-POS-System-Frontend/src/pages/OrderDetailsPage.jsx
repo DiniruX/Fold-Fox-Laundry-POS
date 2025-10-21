@@ -16,6 +16,7 @@ import {
   LockClosedIcon,
   ExclamationTriangleIcon,
   ArrowLeftIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import {
   getOrderStatusLabel,
@@ -25,6 +26,7 @@ import {
   formatOrderAmount,
   calculateOrderProgress,
   useOrder,
+  useDeleteOrder,
 } from '../services/orderService';
 import Button from '../components/ui/Button';
 import PaymentModal from '../components/orders/PaymentModal';
@@ -33,6 +35,7 @@ import OrderStatusManager from '../components/orders/OrderStatusManager';
 import ConfirmItemsModal from '../components/orders/ConfirmItemsModal';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { useAuth } from '../hooks/useAuth';
 
 // Helper function to get order phase label and styling
 const getOrderPhaseInfo = (phase) => {
@@ -57,6 +60,13 @@ const OrderDetailsPage = () => {
   // Fetch order data
   const { data: orderData, isLoading, error, refetch } = useOrder(id);
   const order = orderData?.order || null;
+
+  // Get current user for role check
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  // Delete order mutation
+  const deleteOrderMutation = useDeleteOrder();
 
   if (isLoading) {
     return (
@@ -219,6 +229,35 @@ Thank you!`;
     navigate(`/orders/edit/${order._id}`);
   };
 
+  const handleDeleteOrder = async () => {
+    if (!window.confirm(`⚠️ WARNING: This will PERMANENTLY delete order ${order.orderNumber} from the database.
+
+This action CANNOT be undone!
+
+Are you absolutely sure?`)) {
+      return;
+    }
+
+    // Double confirmation for orders with payments
+    if (order.paidAmount > 0) {
+      if (!window.confirm(`⚠️ CRITICAL: This order has payments (${formatOrderAmount(order.paidAmount)})!
+
+Deleting will remove all payment records permanently.
+
+Continue with deletion?`)) {
+        return;
+      }
+    }
+
+    try {
+      await deleteOrderMutation.mutateAsync(order._id);
+      toast.success('Order permanently deleted');
+      navigate('/orders');
+    } catch (error) {
+      // Error already handled by mutation
+    }
+  };
+
   return (
     <>
       <div className="space-y-6 max-w-7xl mx-auto">
@@ -352,6 +391,17 @@ Thank you!`;
                 <ClipboardDocumentIcon className="h-5 w-5 mr-2" />
                 Copy Info
               </button>
+              {isAdmin && (
+                <button
+                  onClick={handleDeleteOrder}
+                  disabled={deleteOrderMutation.isLoading}
+                  className="inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 border-2 border-red-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  title="Permanently delete this order (Admin only)"
+                >
+                  <TrashIcon className="h-5 w-5 mr-2" />
+                  {deleteOrderMutation.isLoading ? 'Deleting...' : 'Delete Order'}
+                </button>
+              )}
             </div>
           </div>
         </div>

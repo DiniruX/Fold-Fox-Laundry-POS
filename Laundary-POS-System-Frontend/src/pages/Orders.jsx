@@ -13,7 +13,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import OrderList from '../components/orders/OrderList';
 import OrderAnalytics from '../components/orders/OrderAnalytics';
 import PaymentModal from '../components/orders/PaymentModal';
-import { useOrders, formatOrderAmount } from '../services/orderService';
+import { useOrders, formatOrderAmount, useDeleteOrder } from '../services/orderService';
+import toast from 'react-hot-toast';
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Delete order mutation
+  const deleteOrderMutation = useDeleteOrder();
 
   // Handle pre-selected customer from navigation (from Customer page)
   useEffect(() => {
@@ -54,6 +58,15 @@ const Orders = () => {
   const handleModalClose = () => {
     setShowPaymentModal(false);
     setSelectedOrder(null);
+  };
+
+  const handleDeleteOrder = async (order) => {
+    try {
+      await deleteOrderMutation.mutateAsync(order._id);
+      // List will auto-refresh via query invalidation
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   // Fetch order statistics using the hook directly
@@ -206,6 +219,7 @@ const Orders = () => {
                 onEditOrder={handleEditOrder}
                 onViewDetails={handleViewDetails}
                 onProcessPayment={handleProcessPayment}
+                onDeleteOrder={handleDeleteOrder}
               />
             )}
             {activeTab === 'analytics' && <OrderAnalytics />}
