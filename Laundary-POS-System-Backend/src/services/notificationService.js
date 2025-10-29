@@ -761,6 +761,18 @@ const sendReceipt = async ({ email, orderNumber, customerName, order }) => {
         <span>+${formatAmount(order.expressServiceFee)}</span>
       </div>
       ` : ''}
+      ${order.pickupRequired ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #f97316;">
+        <span>📦 Pickup:</span>
+        <span>${order.pickupCharges > 0 ? formatAmount(order.pickupCharges) : 'FREE'}</span>
+      </div>
+      ` : ''}
+      ${order.deliveryRequired ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #16a34a;">
+        <span>🚚 Delivery${order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}:</span>
+        <span>${order.deliveryCharges > 0 ? formatAmount(order.deliveryCharges) : 'FREE'}</span>
+      </div>
+      ` : ''}
       ${order.discountAmount > 0 ? `
       <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #059669;">
         <span>Discount:</span>
@@ -832,7 +844,7 @@ ${order.items?.map(item =>
 PAYMENT SUMMARY
 ----------------------------------------
 Subtotal: ${formatAmount(order.subtotal)}
-${order.isExpressService && order.expressServiceFee > 0 ? `Express Service (1 Day): +${formatAmount(order.expressServiceFee)}\n` : ''}${order.discountAmount > 0 ? `Discount: -${formatAmount(order.discountAmount)}\n` : ''}${order.taxAmount > 0 ? `Tax: ${formatAmount(order.taxAmount)}\n` : ''}Total Amount: ${formatAmount(order.totalAmount)}
+${order.isExpressService && order.expressServiceFee > 0 ? `Express Service (1 Day): +${formatAmount(order.expressServiceFee)}\n` : ''}${order.pickupRequired ? `Pickup: ${order.pickupCharges > 0 ? formatAmount(order.pickupCharges) : 'FREE'}\n` : ''}${order.deliveryRequired ? `Delivery${order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}: ${order.deliveryCharges > 0 ? formatAmount(order.deliveryCharges) : 'FREE'}\n` : ''}${order.discountAmount > 0 ? `Discount: -${formatAmount(order.discountAmount)}\n` : ''}${order.taxAmount > 0 ? `Tax: ${formatAmount(order.taxAmount)}\n` : ''}Total Amount: ${formatAmount(order.totalAmount)}
 Paid: ${formatAmount(order.paidAmount)}
 Balance: ${formatAmount(order.balanceAmount)}
 

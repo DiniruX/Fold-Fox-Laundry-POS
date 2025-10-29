@@ -622,18 +622,30 @@ Use order number as reference.`;
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-between space-x-4 pt-4 border-t-2 border-gray-200">
-        <Button type="button" variant="outline" onClick={() => setPaymentStep('method')} className="px-6 py-3">
-          ← Back
-        </Button>
-        <Button 
-          type="button" 
-          onClick={sendBankDetails}
-          disabled={isLoading}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
-        >
-          {isLoading ? <LoadingSpinner size="sm" /> : '✉️ Send Details via Email & Continue →'}
-        </Button>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-4 border-t-2 border-gray-200">
+        <div>
+          <Button type="button" variant="outline" onClick={() => setPaymentStep('method')} className="px-6 py-3">
+            ← Back
+          </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            type="button" 
+            onClick={sendBankDetails}
+            disabled={isLoading}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
+            title={bankAccountSent ? 'Resend bank details to customer' : 'Send bank details to customer'}
+          >
+            {isLoading ? <LoadingSpinner size="sm" /> : (bankAccountSent ? '✉️ Resend Bank Details' : '✉️ Send Bank Details')}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setPaymentStep('transaction_id')}
+            className="px-6 py-3 bg-green-600 hover:bg-green-700"
+          >
+            Add Transaction ID & Complete →
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -773,6 +785,28 @@ Use order number as reference.`;
                 <span className="text-gray-700">Tax:</span>
                 <span className="font-semibold text-gray-900">
                   + {formatOrderAmount(order.taxAmount)}
+                </span>
+              </div>
+            )}
+
+            {/* Pickup - Always show if required */}
+            {order.pickupRequired && (
+              <div className="flex justify-between items-center bg-orange-50 -mx-4 px-4 py-2 border-l-4 border-orange-500">
+                <span className="text-orange-700 font-medium">📦 Pickup:</span>
+                <span className="font-bold text-orange-700">
+                  {order.pickupCharges > 0 ? formatOrderAmount(order.pickupCharges) : 'FREE'}
+                </span>
+              </div>
+            )}
+
+            {/* Delivery - Always show if required */}
+            {order.deliveryRequired && (
+              <div className="flex justify-between items-center bg-green-50 -mx-4 px-4 py-2 border-l-4 border-green-500">
+                <span className="text-green-700 font-medium">
+                  🚚 Delivery{order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}:
+                </span>
+                <span className="font-bold text-green-700">
+                  {order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}
                 </span>
               </div>
             )}

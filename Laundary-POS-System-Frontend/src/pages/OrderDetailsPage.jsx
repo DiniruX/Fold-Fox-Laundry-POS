@@ -612,6 +612,29 @@ Continue with deletion?`)) {
                           <span className="text-sm font-bold text-blue-700">+{formatOrderAmount(order.expressServiceFee)}</span>
                         </div>
                       )}
+                      {/* Pickup - Always show if required */}
+                      {order.pickupRequired && (
+                        <div className="flex justify-between items-center bg-orange-50 -mx-4 px-4 py-2 border-l-4 border-orange-500">
+                          <span className="text-sm text-orange-700 font-medium flex items-center">
+                            📦 Pickup:
+                          </span>
+                          <span className="text-sm font-bold text-orange-700">
+                            {order.pickupCharges > 0 ? formatOrderAmount(order.pickupCharges) : 'FREE'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Delivery - Always show if required */}
+                      {order.deliveryRequired && (
+                        <div className="flex justify-between items-center bg-green-50 -mx-4 px-4 py-2 border-l-4 border-green-500">
+                          <span className="text-sm text-green-700 font-medium flex items-center">
+                            🚚 Delivery{order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}:
+                          </span>
+                          <span className="text-sm font-bold text-green-700">
+                            {order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}
+                          </span>
+                        </div>
+                      )}
                       {order.extraCharges && order.extraCharges.items && order.extraCharges.items.length > 0 && (
                         <div className="bg-purple-50 -mx-4 px-4 py-2 border-l-4 border-purple-500">
                           <div className="flex justify-between items-center mb-1">

@@ -187,6 +187,22 @@ const orderSchema = new mongoose.Schema({
       min: [0, 'Extra charges cannot be negative']
     }
   },
+  // Pickup and Delivery Charges
+  pickupCharges: {
+    type: Number,
+    default: 0,
+    min: [0, 'Pickup charges cannot be negative']
+  },
+  deliveryCharges: {
+    type: Number,
+    default: 0,
+    min: [0, 'Delivery charges cannot be negative']
+  },
+  deliveryDistance: {
+    type: Number,
+    default: 0,
+    min: [0, 'Delivery distance cannot be negative']
+  },
   // Discount Information (Enhanced)
   discount: {
     type: {
@@ -380,26 +396,30 @@ orderSchema.pre('save', function(next) {
   if (this.items && this.items.length > 0 && (this.isModified('items') || this.isNew)) {
     this.subtotal = this.items.reduce((sum, item) => sum + item.totalPrice, 0);
     
-    // Get values, ensuring they're numbers
-    const taxAmount = Number(this.taxAmount) || 0;
-    const expressServiceFee = Number(this.expressServiceFee) || 0;
-    const extraChargesAmount = Number(this.extraCharges?.total) || 0;
-    const discountAmount = Number(this.discountAmount) || 0;
+  // Get values, ensuring they're numbers
+  const taxAmount = Number(this.taxAmount) || 0;
+  const expressServiceFee = Number(this.expressServiceFee) || 0;
+  const extraChargesAmount = Number(this.extraCharges?.total) || 0;
+  const pickupCharges = Number(this.pickupCharges) || 0;
+  const deliveryCharges = Number(this.deliveryCharges) || 0;
+  const discountAmount = Number(this.discountAmount) || 0;
+  
+  // Calculate total with proper order of operations and rounding to avoid floating point errors
+  const calculatedTotal = this.subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount;
+  this.totalAmount = Math.round(calculatedTotal * 100) / 100;
     
-    // Calculate total with proper order of operations and rounding to avoid floating point errors
-    const calculatedTotal = this.subtotal + taxAmount + expressServiceFee + extraChargesAmount - discountAmount;
-    this.totalAmount = Math.round(calculatedTotal * 100) / 100;
-    
-    // Debug logging
-    console.log(`[Order Pre-Save] Recalculating totals for order ${this.orderNumber}:`, {
-      subtotal: this.subtotal,
-      taxAmount,
-      expressServiceFee,
-      extraChargesAmount,
-      discountAmount,
-      calculatedTotal: this.totalAmount,
-      beforeRounding: calculatedTotal
-    });
+  // Debug logging
+  console.log(`[Order Pre-Save] Recalculating totals for order ${this.orderNumber}:`, {
+    subtotal: this.subtotal,
+    taxAmount,
+    expressServiceFee,
+    extraChargesAmount,
+    pickupCharges,
+    deliveryCharges,
+    discountAmount,
+    calculatedTotal: this.totalAmount,
+    beforeRounding: calculatedTotal
+  });
   }
   next();
 });
@@ -546,12 +566,14 @@ orderSchema.methods.recalculateTotal = function() {
   const taxAmount = Number(this.taxAmount) || 0;
   const expressServiceFee = Number(this.expressServiceFee) || 0;
   const extraChargesAmount = Number(this.extraCharges?.total) || 0;
+  const pickupCharges = Number(this.pickupCharges) || 0;
+  const deliveryCharges = Number(this.deliveryCharges) || 0;
   const discountAmount = Number(this.discountAmount) || 0;
   const paidAmount = Number(this.paidAmount) || 0;
   
   // Calculate total: subtotal + fees + charges - discount
   // Use rounding to avoid floating point precision errors
-  const calculatedTotal = subtotal + taxAmount + expressServiceFee + extraChargesAmount - discountAmount;
+  const calculatedTotal = subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount;
   this.totalAmount = Math.round(calculatedTotal * 100) / 100;
   this.balanceAmount = Math.round((this.totalAmount - paidAmount) * 100) / 100;
   
@@ -560,6 +582,8 @@ orderSchema.methods.recalculateTotal = function() {
     taxAmount,
     expressServiceFee,
     extraChargesAmount,
+    pickupCharges,
+    deliveryCharges,
     discountAmount,
     totalAmount: this.totalAmount,
     paidAmount,

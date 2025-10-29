@@ -220,7 +220,26 @@ const createOrder = async (req, res) => {
     const EXPRESS_SERVICE_FEE = 100; // LKR 100 for 1 day express service
     const expressServiceFee = isExpressService ? EXPRESS_SERVICE_FEE : 0;
     
-    const totalAmount = subtotal + taxAmount + expressServiceFee - discountAmount;
+    // Get pickup and delivery charges from request (or use defaults)
+    let pickupCharges = 0;
+    let deliveryCharges = 0;
+    let deliveryDistance = req.body.deliveryDistance || 0;
+    
+    // If pickup is required, get charges from request or set default
+    if (pickupRequired) {
+      pickupCharges = req.body.pickupCharges ? parseFloat(req.body.pickupCharges) : 50; // Default LKR 50
+    }
+    
+    // If delivery is required, get charges from request
+    if (deliveryRequired) {
+      deliveryCharges = req.body.deliveryCharges ? parseFloat(req.body.deliveryCharges) : 0;
+      // If no custom charge provided and distance > 40km, calculate charge
+      if (deliveryCharges === 0 && deliveryDistance > 40) {
+        deliveryCharges = (deliveryDistance - 40) * 10; // LKR 10 per km beyond 40km
+      }
+    }
+    
+    const totalAmount = subtotal + taxAmount + expressServiceFee + pickupCharges + deliveryCharges - discountAmount;
 
     // Use customer address as default if not provided
     const finalPickupAddress = pickupAddress || customer.address || {};
@@ -247,7 +266,7 @@ const createOrder = async (req, res) => {
     }
 
     // Create order
-    const order = await Order.create({
+    const orderData = {
       customer: customer._id,
       customerInfo: {
         name: customer.fullName,
@@ -265,6 +284,9 @@ const createOrder = async (req, res) => {
       taxAmount,
       isExpressService,
       expressServiceFee,
+      pickupCharges,
+      deliveryCharges,
+      deliveryDistance,
       discount: discountInfo, // Add discount object
       discountAmount,
       totalAmount,
@@ -279,7 +301,9 @@ const createOrder = async (req, res) => {
       orderPhase: initialPhase,
       itemsConfirmed: itemsConfirmed,
       isEditable: true
-    });
+    };
+    
+    const order = await Order.create(orderData);
 
     // Log the created order phase for debugging
     console.log(`[Order Creation] Order ${order.orderNumber} created with phase: ${order.orderPhase}, status: ${order.status}, itemsConfirmed: ${order.itemsConfirmed}`);

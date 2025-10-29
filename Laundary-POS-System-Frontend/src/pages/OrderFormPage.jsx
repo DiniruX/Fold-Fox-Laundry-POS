@@ -66,12 +66,17 @@ const OrderFormPage = () => {
         city: '',
         notes: '',
       },
+      pickupPriceType: 'free',
+      pickupCharges: 0,
       deliveryRequired: false,
       deliveryAddress: {
         street: '',
         city: '',
         notes: '',
       },
+      deliveryPriceType: 'free',
+      deliveryCharges: 0,
+      deliveryDistance: 0,
       specialInstructions: '',
       tags: [],
       isExpressService: false,
@@ -117,8 +122,13 @@ const OrderFormPage = () => {
         })) || [],
         pickupRequired: order.pickupRequired || false,
         pickupAddress: order.pickupAddress || {},
+        pickupPriceType: order.pickupCharges > 0 ? 'price' : 'free',
+        pickupCharges: order.pickupCharges || 0,
         deliveryRequired: order.deliveryRequired || false,
         deliveryAddress: order.deliveryAddress || {},
+        deliveryPriceType: order.deliveryCharges > 0 ? 'price' : 'free',
+        deliveryCharges: order.deliveryCharges || 0,
+        deliveryDistance: order.deliveryDistance || 0,
         specialInstructions: order.specialInstructions || '',
         tags: order.tags || [],
         isExpressService: order.isExpressService || false,
@@ -143,12 +153,17 @@ const OrderFormPage = () => {
           city: '',
           notes: '',
         },
+        pickupPriceType: 'free',
+        pickupCharges: 0,
         deliveryRequired: false,
         deliveryAddress: {
           street: '',
           city: '',
           notes: '',
         },
+        deliveryPriceType: 'free',
+        deliveryCharges: 0,
+        deliveryDistance: 0,
         specialInstructions: '',
         tags: [],
         isExpressService: false,
@@ -182,7 +197,10 @@ const OrderFormPage = () => {
         })),
         // Explicitly convert to boolean to ensure proper type
         pickupRequired: Boolean(data.pickupRequired),
+        pickupCharges: data.pickupCharges ? parseFloat(data.pickupCharges) : 0,
         deliveryRequired: Boolean(data.deliveryRequired),
+        deliveryCharges: data.deliveryCharges ? parseFloat(data.deliveryCharges) : 0,
+        deliveryDistance: data.deliveryDistance ? parseFloat(data.deliveryDistance) : 0,
         isExpressService: Boolean(isExpressService),
       };
 
@@ -726,6 +744,60 @@ const OrderFormPage = () => {
                         placeholder="e.g., Colombo"
                       />
                     </div>
+                    
+                    {/* Pickup Price Selection */}
+                    <div className="mt-4 bg-white border-2 border-blue-300 rounded-lg p-4">
+                      <label className="block text-sm font-semibold text-blue-900 mb-3">📦 Pickup Price</label>
+                      <div className="space-y-3">
+                        <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors" style={{
+                          borderColor: watch('pickupPriceType') === 'free' ? '#3b82f6' : '#e5e7eb'
+                        }}>
+                          <input
+                            type="radio"
+                            name="pickupPriceType"
+                            value="free"
+                            checked={watch('pickupPriceType') === 'free'}
+                            onChange={() => {
+                              setValue('pickupPriceType', 'free');
+                              setValue('pickupCharges', 0);
+                            }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-3 text-sm font-medium">
+                            <span className="text-green-600 font-bold">FREE</span> Pickup
+                          </span>
+                        </label>
+                        
+                        <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors" style={{
+                          borderColor: watch('pickupPriceType') === 'price' ? '#3b82f6' : '#e5e7eb'
+                        }}>
+                          <input
+                            type="radio"
+                            name="pickupPriceType"
+                            value="price"
+                            checked={watch('pickupPriceType') === 'price'}
+                            onChange={() => setValue('pickupPriceType', 'price')}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="ml-3 flex-1">
+                            <span className="text-sm font-medium mr-2">Add Custom Price:</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              {...register('pickupCharges', { 
+                                valueAsNumber: true,
+                                disabled: watch('pickupPriceType') !== 'price'
+                              })}
+                              error={errors.pickupCharges?.message}
+                              placeholder="0.00"
+                              className="inline-block w-32"
+                            />
+                            <span className="text-sm text-gray-600 ml-2">LKR</span>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -746,6 +818,59 @@ const OrderFormPage = () => {
                         error={errors.deliveryAddress?.city?.message}
                         placeholder="e.g., Colombo"
                       />
+                    </div>
+                    {/* Delivery Price Selection */}
+                    <div className="mt-4 bg-white border-2 border-green-300 rounded-lg p-4">
+                      <label className="block text-sm font-semibold text-green-900 mb-3">🚚 Delivery Price</label>
+                      <div className="space-y-3">
+                        <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-green-50 transition-colors" style={{
+                          borderColor: watch('deliveryPriceType') === 'free' ? '#10b981' : '#e5e7eb'
+                        }}>
+                          <input
+                            type="radio"
+                            name="deliveryPriceType"
+                            value="free"
+                            checked={watch('deliveryPriceType') === 'free'}
+                            onChange={() => {
+                              setValue('deliveryPriceType', 'free');
+                              setValue('deliveryCharges', 0);
+                            }}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="ml-3 text-sm font-medium">
+                            <span className="text-green-600 font-bold">FREE</span> Delivery
+                          </span>
+                        </label>
+                        
+                        <label className="flex items-center p-3 border-2 rounded-lg cursor-pointer hover:bg-green-50 transition-colors" style={{
+                          borderColor: watch('deliveryPriceType') === 'price' ? '#10b981' : '#e5e7eb'
+                        }}>
+                          <input
+                            type="radio"
+                            name="deliveryPriceType"
+                            value="price"
+                            checked={watch('deliveryPriceType') === 'price'}
+                            onChange={() => setValue('deliveryPriceType', 'price')}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="ml-3 flex-1">
+                            <span className="text-sm font-medium mr-2">Add Custom Price:</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              {...register('deliveryCharges', { 
+                                valueAsNumber: true,
+                                disabled: watch('deliveryPriceType') !== 'price'
+                              })}
+                              error={errors.deliveryCharges?.message}
+                              placeholder="0.00"
+                              className="inline-block w-32"
+                            />
+                            <span className="text-sm text-gray-600 ml-2">LKR</span>
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}

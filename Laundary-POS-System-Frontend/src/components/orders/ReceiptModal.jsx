@@ -226,6 +226,21 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
                 </div>
               </div>
             )}
+            {/* Pickup - Always show if required */}
+            {order.pickupRequired && (
+              <div className="total-row" style={{ color: '#f97316', fontWeight: 'bold' }}>
+                <span>📦 Pickup:</span>
+                <span>{order.pickupCharges > 0 ? formatOrderAmount(order.pickupCharges) : 'FREE'}</span>
+              </div>
+            )}
+            
+            {/* Delivery - Always show if required */}
+            {order.deliveryRequired && (
+              <div className="total-row" style={{ color: '#16a34a', fontWeight: 'bold' }}>
+                <span>🚚 Delivery{order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}:</span>
+                <span>{order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}</span>
+              </div>
+            )}
             {order.taxAmount > 0 && (
               <div className="total-row">
                 <span>Tax:</span>
