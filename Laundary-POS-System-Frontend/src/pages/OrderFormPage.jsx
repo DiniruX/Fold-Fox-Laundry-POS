@@ -197,10 +197,18 @@ const OrderFormPage = () => {
         })),
         // Explicitly convert to boolean to ensure proper type
         pickupRequired: Boolean(data.pickupRequired),
-        pickupCharges: data.pickupCharges ? parseFloat(data.pickupCharges) : 0,
+        // Explicitly handle 0 values (free pickup) - parseFloat allows 0 to pass through
+        pickupCharges: (data.pickupCharges !== undefined && data.pickupCharges !== null) 
+          ? parseFloat(data.pickupCharges) 
+          : 0,
         deliveryRequired: Boolean(data.deliveryRequired),
-        deliveryCharges: data.deliveryCharges ? parseFloat(data.deliveryCharges) : 0,
-        deliveryDistance: data.deliveryDistance ? parseFloat(data.deliveryDistance) : 0,
+        // Explicitly handle 0 values (free delivery) - parseFloat allows 0 to pass through
+        deliveryCharges: (data.deliveryCharges !== undefined && data.deliveryCharges !== null)
+          ? parseFloat(data.deliveryCharges)
+          : 0,
+        deliveryDistance: (data.deliveryDistance !== undefined && data.deliveryDistance !== null)
+          ? parseFloat(data.deliveryDistance)
+          : 0,
         isExpressService: Boolean(isExpressService),
       };
 
@@ -252,6 +260,24 @@ const OrderFormPage = () => {
   // Get service details for pricing calculation
   const getServiceDetails = (serviceId) => {
     return services.find(service => service._id === serviceId);
+  };
+
+  // Helper function to get category-specific priceType (with fallback)
+  const getCategoryPriceType = (service, category) => {
+    if (!service || !category) return service?.priceType || 'per_piece';
+    
+    // Check if clothingPriceTypes exists and has the category
+    let priceTypesObj = service.clothingPriceTypes;
+    if (service.clothingPriceTypes instanceof Map) {
+      priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+    }
+    
+    if (priceTypesObj && priceTypesObj[category]) {
+      return priceTypesObj[category];
+    }
+    
+    // Fallback to legacy priceType
+    return service.priceType || 'per_piece';
   };
 
   const isLoading = createOrderMutation.isPending || updateOrderMutation.isPending || isLoadingOrder;
@@ -509,7 +535,24 @@ const OrderFormPage = () => {
                             <div className="lg:col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
                               <select
-                                {...register(`items.${index}.serviceId`, { required: 'Service is required' })}
+                                {...register(`items.${index}.serviceId`, { 
+                                  required: 'Service is required',
+                                  onChange: (e) => {
+                                    // Reset weight/quantity when service changes
+                                    const selectedService = services.find(s => s._id === e.target.value);
+                                    if (selectedService) {
+                                      const currentCategory = watch(`items.${index}.clothingCategory`) || 'normal_clothes';
+                                      const categoryPriceType = getCategoryPriceType(selectedService, currentCategory);
+                                      if (categoryPriceType === 'per_kg') {
+                                        setValue(`items.${index}.weight`, 0);
+                                        setValue(`items.${index}.quantity`, 1);
+                                      } else {
+                                        setValue(`items.${index}.quantity`, 1);
+                                        setValue(`items.${index}.weight`, 0);
+                                      }
+                                    }
+                                  }
+                                })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                               >
                                 <option value="">Select a service</option>
@@ -524,48 +567,70 @@ const OrderFormPage = () => {
                               )}
                             </div>
 
-                            {service?.priceType === 'per_kg' ? (
-                              <div>
-                                <Input
-                                  label="Weight (kg)"
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
-                                  {...register(`items.${index}.weight`, {
-                                    required: 'Weight is required',
-                                    min: { value: 0.1, message: 'Weight must be at least 0.1 kg' },
-                                    valueAsNumber: true
-                                  })}
-                                  error={errors.items?.[index]?.weight?.message}
-                                  placeholder="Enter weight in kg"
-                                  required
-                                />
-                              </div>
-                            ) : (
-                              <div>
-                                <Input
-                                  label="Quantity"
-                                  type="number"
-                                  min="1"
-                                  {...register(`items.${index}.quantity`, {
-                                    required: 'Quantity is required',
-                                    min: { value: 1, message: 'Quantity must be at least 1' },
-                                    valueAsNumber: true
-                                  })}
-                                  error={errors.items?.[index]?.quantity?.message}
-                                  placeholder="1"
-                                  required
-                                />
-                              </div>
-                            )}
+                            {(() => {
+                              const selectedCategory = watch(`items.${index}.clothingCategory`) || 'normal_clothes';
+                              const categoryPriceType = service ? getCategoryPriceType(service, selectedCategory) : 'per_piece';
+                              
+                              return categoryPriceType === 'per_kg' ? (
+                                <div>
+                                  <Input
+                                    label="Weight (kg)"
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    {...register(`items.${index}.weight`, {
+                                      required: 'Weight is required',
+                                      min: { value: 0.1, message: 'Weight must be at least 0.1 kg' },
+                                      valueAsNumber: true
+                                    })}
+                                    error={errors.items?.[index]?.weight?.message}
+                                    placeholder="Enter weight in kg"
+                                    required
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <Input
+                                    label="Quantity"
+                                    type="number"
+                                    min="1"
+                                    {...register(`items.${index}.quantity`, {
+                                      required: 'Quantity is required',
+                                      min: { value: 1, message: 'Quantity must be at least 1' },
+                                      valueAsNumber: true
+                                    })}
+                                    error={errors.items?.[index]?.quantity?.message}
+                                    placeholder="1"
+                                    required
+                                  />
+                                </div>
+                              );
+                            })()}
 
-                            {(service?.priceType === 'per_piece' || service?.priceType === 'per_kg') && (
+                            {service && (
                               <div className="lg:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Clothing Category {service?.priceType === 'per_kg' ? '(price per kg)' : '(price per piece)'}
+                                  Clothing Category
                                 </label>
                                 <select
-                                  {...register(`items.${index}.clothingCategory`)}
+                                  {...register(`items.${index}.clothingCategory`, {
+                                    onChange: (e) => {
+                                      // Update weight/quantity when category changes
+                                      if (service) {
+                                        const newCategory = e.target.value;
+                                        const categoryPriceType = getCategoryPriceType(service, newCategory);
+                                        if (categoryPriceType === 'per_kg') {
+                                          // Switch to weight-based
+                                          setValue(`items.${index}.weight`, 0);
+                                          setValue(`items.${index}.quantity`, 1);
+                                        } else {
+                                          // Switch to quantity-based
+                                          setValue(`items.${index}.quantity`, 1);
+                                          setValue(`items.${index}.weight`, 0);
+                                        }
+                                      }
+                                    }
+                                  })}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 >
                                   {Object.entries(CLOTHING_CATEGORIES).map(([key, value]) => (
@@ -594,16 +659,21 @@ const OrderFormPage = () => {
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-blue-700 font-medium">{service.name}</span>
                                   <span className="text-blue-600 text-xs">
-                                    {service.priceType === 'per_kg' ? 'Per Kilogram' : 'Per Piece'}
+                                    {(() => {
+                                      const selectedCategory = watch(`items.${index}.clothingCategory`) || 'normal_clothes';
+                                      const categoryPriceType = getCategoryPriceType(service, selectedCategory);
+                                      return categoryPriceType === 'per_kg' ? 'Per Kilogram' : 'Per Piece';
+                                    })()}
                                   </span>
                                 </div>
                                 {(() => {
                                   const selectedCategory = watch(`items.${index}.clothingCategory`) || 'normal_clothes';
+                                  const categoryPriceType = getCategoryPriceType(service, selectedCategory);
                                   const categoryPrice = service.clothingPrices?.get?.(selectedCategory) || 
                                                        service.clothingPrices?.[selectedCategory] || 0;
                                   const weight = parseFloat(watch(`items.${index}.weight`)) || 0;
                                   const quantity = parseInt(watch(`items.${index}.quantity`)) || 1;
-                                  const total = service.priceType === 'per_kg' 
+                                  const total = categoryPriceType === 'per_kg' 
                                     ? categoryPrice * weight 
                                     : categoryPrice * quantity;
                                   
@@ -614,10 +684,10 @@ const OrderFormPage = () => {
                                           Category: {getClothingCategoryLabel(selectedCategory)}
                                         </span>
                                         <span className="text-blue-900 font-semibold">
-                                          LKR {categoryPrice} / {service.priceType === 'per_kg' ? 'kg' : 'piece'}
+                                          LKR {categoryPrice} / {categoryPriceType === 'per_kg' ? 'kg' : 'piece'}
                                         </span>
                                       </div>
-                                      {service.priceType === 'per_kg' && weight > 0 && (
+                                      {categoryPriceType === 'per_kg' && weight > 0 && (
                                         <div className="flex items-center justify-between text-xs">
                                           <span className="text-blue-600">
                                             {weight} kg × LKR {categoryPrice}
@@ -627,7 +697,7 @@ const OrderFormPage = () => {
                                           </span>
                                         </div>
                                       )}
-                                      {service.priceType === 'per_piece' && quantity > 0 && (
+                                      {categoryPriceType === 'per_piece' && quantity > 0 && (
                                         <div className="flex items-center justify-between text-xs">
                                           <span className="text-blue-600">
                                             {quantity} piece(s) × LKR {categoryPrice}

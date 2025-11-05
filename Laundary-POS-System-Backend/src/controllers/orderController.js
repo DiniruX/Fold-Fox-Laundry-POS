@@ -4,6 +4,22 @@ const Service = require('../models/Service');
 const { generateOrderNumber } = require('../utils/helpers');
 const { sendBankAccountDetails, sendOrderConfirmation, sendPickupScheduledEmail } = require('../services/notificationService');
 
+// Helper function to get priceType for a category (with fallback to legacy priceType)
+const getCategoryPriceType = (service, category) => {
+  // Check if clothingPriceTypes exists and has the category
+  let priceTypesObj = service.clothingPriceTypes;
+  if (service.clothingPriceTypes instanceof Map) {
+    priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+  }
+  
+  if (priceTypesObj && priceTypesObj[category]) {
+    return priceTypesObj[category];
+  }
+  
+  // Fallback to legacy priceType
+  return service.priceType || 'per_piece';
+};
+
 // Helper function to determine next status based on service statuses and order requirements
 const determineNextStatus = (currentStatus, serviceStatuses, pickupRequired, deliveryRequired) => {
   // If pickup required and status is pickup, next is received
@@ -113,9 +129,13 @@ const createOrder = async (req, res) => {
 
       // Calculate pricing based on service type and clothing category
       let unitPrice = service.basePrice;
+      const clothingCategory = item.clothingCategory || 'normal_clothes';
+      
+      // Get category-specific priceType
+      const categoryPriceType = getCategoryPriceType(service, clothingCategory);
       
       // Both per_kg and per_piece now use clothing category pricing
-      if ((service.priceType === 'per_piece' || service.priceType === 'per_kg') && item.clothingCategory) {
+      if (clothingCategory) {
         // Convert Map to Object if necessary
         let pricesObj = service.clothingPrices;
         if (service.clothingPrices instanceof Map) {
@@ -123,36 +143,36 @@ const createOrder = async (req, res) => {
         }
         
         // Try to get the price for the category
-        const clothingPrice = pricesObj?.[item.clothingCategory];
+        const clothingPrice = pricesObj?.[clothingCategory];
         
         if (clothingPrice !== undefined && clothingPrice !== null && clothingPrice > 0) {
           unitPrice = Number(clothingPrice);
         } else {
           return res.status(400).json({
             success: false,
-            message: `No price found for clothing category: "${item.clothingCategory}" in service: "${service.name}". Available categories: ${Object.keys(pricesObj || {}).join(', ') || 'NONE'}`
+            message: `No price found for clothing category: "${clothingCategory}" in service: "${service.name}". Available categories: ${Object.keys(pricesObj || {}).join(', ') || 'NONE'}`
           });
         }
       }
 
-      // Validate weight/quantity based on price type
-      if (service.priceType === 'per_kg') {
+      // Validate weight/quantity based on category-specific price type
+      if (categoryPriceType === 'per_kg') {
         if (!item.weight || item.weight <= 0) {
           return res.status(400).json({
             success: false,
-            message: `Weight is required and must be greater than 0 for service: ${service.name}`
+            message: `Weight is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
           });
         }
-      } else if (service.priceType === 'per_piece') {
+      } else if (categoryPriceType === 'per_piece') {
         if (!item.quantity || item.quantity <= 0) {
           return res.status(400).json({
             success: false,
-            message: `Quantity is required and must be greater than 0 for service: ${service.name}`
+            message: `Quantity is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
           });
         }
       }
 
-      const totalPrice = service.priceType === 'per_kg' 
+      const totalPrice = categoryPriceType === 'per_kg' 
         ? unitPrice * item.weight
         : unitPrice * item.quantity;
 
@@ -227,12 +247,18 @@ const createOrder = async (req, res) => {
     
     // If pickup is required, get charges from request or set default
     if (pickupRequired) {
-      pickupCharges = req.body.pickupCharges ? parseFloat(req.body.pickupCharges) : 50; // Default LKR 50
+      // Check explicitly for undefined/null to allow 0 (free) values
+      pickupCharges = (req.body.pickupCharges !== undefined && req.body.pickupCharges !== null) 
+        ? parseFloat(req.body.pickupCharges) 
+        : 50; // Default LKR 50 only if not provided
     }
     
     // If delivery is required, get charges from request
     if (deliveryRequired) {
-      deliveryCharges = req.body.deliveryCharges ? parseFloat(req.body.deliveryCharges) : 0;
+      // Check explicitly for undefined/null to allow 0 (free) values
+      deliveryCharges = (req.body.deliveryCharges !== undefined && req.body.deliveryCharges !== null)
+        ? parseFloat(req.body.deliveryCharges)
+        : 0;
       // If no custom charge provided and distance > 40km, calculate charge
       if (deliveryCharges === 0 && deliveryDistance > 40) {
         deliveryCharges = (deliveryDistance - 40) * 10; // LKR 10 per km beyond 40km
@@ -366,7 +392,7 @@ const createOrder = async (req, res) => {
       data: {
         order: await Order.findById(order._id)
           .populate('customer', 'fullName phoneNumber address loyaltyPoints')
-          .populate('items.service', 'name priceType basePrice statuses')
+          .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes statuses')
           .populate('createdBy', 'name')
       }
     });
@@ -459,7 +485,7 @@ const getOrders = async (req, res) => {
     // Execute query
     const orders = await Order.find(filter)
       .populate('customer', 'fullName phoneNumber address')
-      .populate('items.service', 'name priceType basePrice clothingPrices estimatedTime statuses')
+      .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'name')
       .populate('assignedStaff', 'name')
       .sort(sort)
@@ -502,7 +528,7 @@ const getOrder = async (req, res) => {
 
     const order = await Order.findById(id)
       .populate('customer', 'fullName phoneNumber address loyaltyPoints')
-      .populate('items.service', 'name priceType basePrice clothingPrices estimatedTime statuses')
+      .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'name')
       .populate('assignedStaff', 'name');
 
@@ -590,9 +616,13 @@ const updateOrder = async (req, res) => {
 
         // Calculate pricing based on service type and clothing category
         let unitPrice = service.basePrice;
+        const clothingCategory = item.clothingCategory || 'normal_clothes';
+        
+        // Get category-specific priceType
+        const categoryPriceType = getCategoryPriceType(service, clothingCategory);
         
         // Both per_kg and per_piece now use clothing category pricing
-        if ((service.priceType === 'per_piece' || service.priceType === 'per_kg') && item.clothingCategory) {
+        if (clothingCategory) {
           // Convert Map to Object if necessary
           let pricesObj = service.clothingPrices;
           if (service.clothingPrices instanceof Map) {
@@ -600,36 +630,36 @@ const updateOrder = async (req, res) => {
           }
           
           // Try to get the price for the category
-          const clothingPrice = pricesObj?.[item.clothingCategory];
+          const clothingPrice = pricesObj?.[clothingCategory];
           
           if (clothingPrice !== undefined && clothingPrice !== null) {
             unitPrice = Number(clothingPrice);
           } else {
             return res.status(400).json({
               success: false,
-              message: `No price found for clothing category: ${item.clothingCategory} in service: ${service.name}. Available categories: ${Object.keys(pricesObj || {}).join(', ')}`
+              message: `No price found for clothing category: ${clothingCategory} in service: ${service.name}. Available categories: ${Object.keys(pricesObj || {}).join(', ')}`
             });
           }
         }
 
-        // Validate weight/quantity based on price type
-        if (service.priceType === 'per_kg') {
+        // Validate weight/quantity based on category-specific price type
+        if (categoryPriceType === 'per_kg') {
           if (!item.weight || item.weight <= 0) {
             return res.status(400).json({
               success: false,
-              message: `Weight is required and must be greater than 0 for service: ${service.name}`
+              message: `Weight is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
             });
           }
-        } else if (service.priceType === 'per_piece') {
+        } else if (categoryPriceType === 'per_piece') {
           if (!item.quantity || item.quantity <= 0) {
             return res.status(400).json({
               success: false,
-              message: `Quantity is required and must be greater than 0 for service: ${service.name}`
+              message: `Quantity is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
             });
           }
         }
 
-        const totalPrice = service.priceType === 'per_kg' 
+        const totalPrice = categoryPriceType === 'per_kg' 
           ? unitPrice * item.weight
           : unitPrice * item.quantity;
 
@@ -656,7 +686,7 @@ const updateOrder = async (req, res) => {
     // Reload with populated data
     const order = await Order.findById(id)
       .populate('customer', 'fullName phoneNumber address')
-      .populate('items.service', 'name priceType statuses')
+      .populate('items.service', 'name priceType clothingPrices clothingPriceTypes statuses')
       .populate('createdBy', 'name');
 
     res.json({
@@ -693,7 +723,7 @@ const updateOrderStatus = async (req, res) => {
     }
 
     const order = await Order.findById(id)
-      .populate('items.service', 'statuses');
+      .populate('items.service', 'name priceType clothingPrices clothingPriceTypes statuses');
     
     if (!order) {
       return res.status(404).json({
@@ -827,7 +857,7 @@ const addPayment = async (req, res) => {
     // Reload order with populated data
     const updatedOrder = await Order.findById(id)
       .populate('customer', 'fullName phoneNumber email')
-      .populate('items.service', 'name basePrice clothingPrices estimatedTime statuses')
+      .populate('items.service', 'name basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'fullName email')
       .populate('assignedStaff', 'fullName phoneNumber');
 
@@ -1131,10 +1161,13 @@ const confirmOrderItems = async (req, res) => {
       const actualWeight = itemUpdate.actualWeight !== undefined ? itemUpdate.actualWeight : originalItem.weight;
       const clothingCategory = itemUpdate.clothingCategory || originalItem.clothingCategory || 'normal_clothes';
 
+      // Get category-specific priceType
+      const categoryPriceType = getCategoryPriceType(service, clothingCategory);
+      
       // Calculate pricing based on service type and clothing category
       let unitPrice = service.basePrice;
       
-      if ((service.priceType === 'per_piece' || service.priceType === 'per_kg') && clothingCategory) {
+      if (clothingCategory) {
         let pricesObj = service.clothingPrices;
         if (service.clothingPrices instanceof Map) {
           pricesObj = Object.fromEntries(service.clothingPrices);
@@ -1147,20 +1180,20 @@ const confirmOrderItems = async (req, res) => {
         }
       }
 
-      // Validate actual quantities
-      if (service.priceType === 'per_kg' && (!actualWeight || actualWeight <= 0)) {
+      // Validate actual quantities based on category-specific price type
+      if (categoryPriceType === 'per_kg' && (!actualWeight || actualWeight <= 0)) {
         return res.status(400).json({
           success: false,
-          message: `Weight is required and must be greater than 0 for service: ${service.name}`
+          message: `Weight is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
         });
-      } else if (service.priceType === 'per_piece' && (!actualQuantity || actualQuantity <= 0)) {
+      } else if (categoryPriceType === 'per_piece' && (!actualQuantity || actualQuantity <= 0)) {
         return res.status(400).json({
           success: false,
-          message: `Quantity is required and must be greater than 0 for service: ${service.name}`
+          message: `Quantity is required and must be greater than 0 for service: ${service.name} (category: ${clothingCategory})`
         });
       }
 
-      const totalPrice = service.priceType === 'per_kg' 
+      const totalPrice = categoryPriceType === 'per_kg' 
         ? unitPrice * actualWeight
         : unitPrice * actualQuantity;
 
@@ -1295,7 +1328,7 @@ const confirmOrderItems = async (req, res) => {
     // Reload order with populated data
     const updatedOrder = await Order.findById(id)
       .populate('customer', 'fullName phoneNumber email address loyaltyPoints')
-      .populate('items.service', 'name priceType basePrice clothingPrices estimatedTime statuses')
+      .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'name')
       .populate('confirmedBy', 'name');
 
@@ -1401,7 +1434,7 @@ const sendReceiptToCustomer = async (req, res) => {
     // Get order with populated data
     const order = await Order.findById(id)
       .populate('customer', 'fullName phoneNumber email')
-      .populate('items.service', 'name basePrice clothingPrices estimatedTime statuses');
+      .populate('items.service', 'name basePrice clothingPrices clothingPriceTypes estimatedTime statuses');
 
     if (!order) {
       return res.status(404).json({

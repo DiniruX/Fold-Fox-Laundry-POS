@@ -2,7 +2,22 @@ import React, { useRef, useState } from 'react';
 import { PrinterIcon, EnvelopeIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { formatOrderNumber, formatOrderDate, formatOrderAmount, getOrderStatusLabel } from '../../services/orderService';
 import { ordersAPI } from '../../services/api';
+import { getClothingCategoryLabel } from '../../services/serviceService';
 import toast from 'react-hot-toast';
+
+// Helper function to get category-specific priceType
+const getCategoryPriceType = (service, category) => {
+  if (!service || !category) return service?.priceType || 'per_piece';
+  let priceTypesObj = service.clothingPriceTypes;
+  if (service.clothingPriceTypes instanceof Map) {
+    priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+  }
+  if (priceTypesObj && priceTypesObj[category]) {
+    return priceTypesObj[category];
+  }
+  return service.priceType || 'per_piece';
+};
+
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
@@ -181,21 +196,30 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
               </tr>
             </thead>
             <tbody>
-              {order.items?.map((item, index) => (
+              {order.items?.map((item, index) => {
+                const serviceDisplay = item.clothingCategory 
+                  ? `${item.serviceName} - ${getClothingCategoryLabel(item.clothingCategory)}`
+                  : item.serviceName;
+                const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+                const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+                return (
                 <tr key={index}>
                   <td>
-                    <div>{item.serviceName}</div>
+                    <div>{serviceDisplay}</div>
                     {item.notes && (
                       <div style={{ fontSize: '10px', color: '#666' }}>{item.notes}</div>
                     )}
                   </td>
                   <td>
-                    {item.weight > 0 ? `${item.weight} kg` : `${item.quantity} pcs`}
+                    {categoryPriceType === 'per_kg' 
+                      ? `${item.weight || 0} kg` 
+                      : `${item.quantity || 0} pcs`}
                   </td>
-                  <td>{formatOrderAmount(item.unitPrice)}</td>
+                  <td>{formatOrderAmount(item.unitPrice)} {priceTypeLabel}</td>
                   <td>{formatOrderAmount(item.totalPrice)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
 

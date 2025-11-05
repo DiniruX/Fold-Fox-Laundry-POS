@@ -20,24 +20,40 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
 
+  // Helper to get category-specific priceType
+  const getCategoryPriceType = (service, category) => {
+    if (!service || !category) return service?.priceType || 'per_piece';
+    let priceTypesObj = service.clothingPriceTypes;
+    if (service.clothingPriceTypes instanceof Map) {
+      priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+    }
+    if (priceTypesObj && priceTypesObj[category]) {
+      return priceTypesObj[category];
+    }
+    return service.priceType || 'per_piece';
+  };
+
   // Initialize confirmed items with estimated values
   useEffect(() => {
     if (isOpen && order && order.items) {
-      const initialItems = order.items.map(item => ({
-        itemId: item._id,
-        serviceName: item.serviceName,
-        serviceId: item.service?._id || item.service,
-        priceType: item.service?.priceType || 'per_piece',
-        clothingCategory: item.clothingCategory,
-        estimatedQuantity: item.quantity || 0,
-        estimatedWeight: item.weight || 0,
-        actualQuantity: item.quantity || 0,
-        actualWeight: item.weight || 0,
-        unitPrice: item.unitPrice,
-        estimatedPrice: item.totalPrice,
-        actualPrice: item.totalPrice,
-        notes: item.notes || ''
-      }));
+      const initialItems = order.items.map(item => {
+        const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+        return {
+          itemId: item._id,
+          serviceName: item.serviceName,
+          serviceId: item.service?._id || item.service,
+          priceType: categoryPriceType,
+          clothingCategory: item.clothingCategory,
+          estimatedQuantity: item.quantity || 0,
+          estimatedWeight: item.weight || 0,
+          actualQuantity: item.quantity || 0,
+          actualWeight: item.weight || 0,
+          unitPrice: item.unitPrice,
+          estimatedPrice: item.totalPrice,
+          actualPrice: item.totalPrice,
+          notes: item.notes || ''
+        };
+      });
       setConfirmedItems(initialItems);
     }
   }, [isOpen, order]);
@@ -209,7 +225,9 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-gray-900 text-base">
-                    {item.serviceName}
+                    {item.clothingCategory 
+                      ? `${item.serviceName} - ${getClothingCategoryLabel(item.clothingCategory)}`
+                      : item.serviceName}
                   </h3>
                   <div className={`flex items-center space-x-1 px-3 py-1 rounded-full ${indicator.color}`}>
                     <Icon className="h-5 w-5" />

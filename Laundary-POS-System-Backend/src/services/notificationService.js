@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { formatServiceNameWithCategory, getCategoryPriceType } = require('../utils/helpers');
 
 // ============================================================================
 // CONFIGURATION & INITIALIZATION
@@ -424,10 +425,13 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
     if (orderDetails && orderDetails.items && orderDetails.items.length > 0) {
       // Plain text version
       itemsList = '\n\nOrder Items:\n' + orderDetails.items.map((item, index) => {
-        const qty = item.quantity > 0 ? `${item.quantity} piece(s)` : '';
-        const weight = item.weight > 0 ? `${item.weight} kg` : '';
-        const qtyOrWeight = qty || weight;
-        return `${index + 1}. ${item.serviceName} - ${qtyOrWeight} - ${currency} ${parseFloat(item.totalPrice).toLocaleString('en-LK')}`;
+        const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+        const qtyOrWeight = categoryPriceType === 'per_kg' 
+          ? `${item.weight || 0} kg` 
+          : `${item.quantity || 0} piece(s)`;
+        const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+        const serviceDisplay = formatServiceNameWithCategory(item.serviceName, item.clothingCategory);
+        return `${index + 1}. ${serviceDisplay} - ${qtyOrWeight} @ ${currency} ${parseFloat(item.unitPrice).toLocaleString('en-LK')}${priceTypeLabel} = ${currency} ${parseFloat(item.totalPrice).toLocaleString('en-LK')}`;
       }).join('\n');
 
       // HTML version
@@ -444,12 +448,15 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
             </thead>
             <tbody>
               ${orderDetails.items.map(item => {
-                const qty = item.quantity > 0 ? `${item.quantity} piece(s)` : '';
-                const weight = item.weight > 0 ? `${item.weight} kg` : '';
-                const qtyOrWeight = qty || weight;
+                const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+                const qtyOrWeight = categoryPriceType === 'per_kg' 
+                  ? `${item.weight || 0} kg` 
+                  : `${item.quantity || 0} piece(s)`;
+                const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+                const serviceDisplay = formatServiceNameWithCategory(item.serviceName, item.clothingCategory);
                 return `
                   <tr>
-                    <td style="padding: 10px; border: 1px solid #e5e7eb;">${item.serviceName}</td>
+                    <td style="padding: 10px; border: 1px solid #e5e7eb;">${serviceDisplay}</td>
                     <td style="padding: 10px; text-align: center; border: 1px solid #e5e7eb;">${qtyOrWeight}</td>
                     <td style="padding: 10px; text-align: right; border: 1px solid #e5e7eb;">${currency} ${parseFloat(item.totalPrice).toLocaleString('en-LK')}</td>
                   </tr>
@@ -658,16 +665,24 @@ const sendReceipt = async ({ email, orderNumber, customerName, order }) => {
     // Build items HTML
     let itemsHTML = '';
     if (order.items && order.items.length > 0) {
-      itemsHTML = order.items.map(item => `
+      itemsHTML = order.items.map(item => {
+        const serviceDisplay = formatServiceNameWithCategory(item.serviceName || 'Service', item.clothingCategory);
+        const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+        const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+        const qtyDisplay = categoryPriceType === 'per_kg' 
+          ? `${item.weight || 0} kg` 
+          : `${item.quantity || 0} pc`;
+        return `
         <tr>
-          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.serviceName || 'Service'}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${serviceDisplay}</td>
           <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-            ${item.weight > 0 ? `${item.weight} kg` : `${item.quantity} pc`}
+            ${qtyDisplay}
           </td>
-          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatAmount(item.unitPrice)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatAmount(item.unitPrice)} ${priceTypeLabel}</td>
           <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatAmount(item.totalPrice)}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     // Build payment history HTML
@@ -837,9 +852,15 @@ Status: ${order.status?.toUpperCase()}
 
 ORDER ITEMS
 ----------------------------------------
-${order.items?.map(item => 
-  `${item.serviceName || 'Service'} - ${item.weight > 0 ? `${item.weight} kg` : `${item.quantity} pc`} @ ${formatAmount(item.unitPrice)} = ${formatAmount(item.totalPrice)}`
-).join('\n')}
+${order.items?.map(item => {
+  const serviceDisplay = formatServiceNameWithCategory(item.serviceName || 'Service', item.clothingCategory);
+  const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+  const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+  const qtyDisplay = categoryPriceType === 'per_kg' 
+    ? `${item.weight || 0} kg` 
+    : `${item.quantity || 0} pc`;
+  return `${serviceDisplay} - ${qtyDisplay} @ ${formatAmount(item.unitPrice)}${priceTypeLabel} = ${formatAmount(item.totalPrice)}`;
+}).join('\n')}
 
 PAYMENT SUMMARY
 ----------------------------------------

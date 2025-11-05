@@ -184,15 +184,25 @@ const ServiceDetailsPage = () => {
               {service.clothingPrices && Object.keys(service.clothingPrices).length > 0 && (
                 <div className="pt-3 border-t border-gray-200">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
-                    Clothing Category Prices {service.priceType === 'per_kg' ? '(per kg)' : '(per piece)'}
+                    Clothing Category Prices
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(service.clothingPrices).map(([category, price]) => (
-                      <div key={category} className="flex justify-between items-center text-xs">
-                        <span className="text-gray-600 capitalize">{category.replace('_', ' ')}:</span>
-                        <span className="font-bold" style={{ color: '#fe7f2d' }}>LKR {price}</span>
-                      </div>
-                    ))}
+                    {Object.entries(service.clothingPrices).map(([category, price]) => {
+                      // Get category-specific priceType
+                      let priceTypesObj = service.clothingPriceTypes;
+                      if (service.clothingPriceTypes instanceof Map) {
+                        priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+                      }
+                      const categoryPriceType = priceTypesObj?.[category] || service.priceType || 'per_piece';
+                      const priceTypeLabel = categoryPriceType === 'per_kg' ? 'per kg' : 'per piece';
+                      
+                      return (
+                        <div key={category} className="flex justify-between items-center text-xs">
+                          <span className="text-gray-600 capitalize">{category.replace(/_/g, ' ')}:</span>
+                          <span className="font-bold" style={{ color: '#fe7f2d' }}>LKR {price} / {priceTypeLabel}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -18,36 +18,63 @@ const createService = async (req, res) => {
     const {
       name,
       description,
-      priceType,
+      priceType, // Legacy field, kept for backward compatibility
       basePrice,
       statuses,
       clothingPrices,
+      clothingPriceTypes, // New: priceType per category
       estimatedTime,
       icon,
       color
     } = req.body;
 
-    // Basic validation (friendlier than raw Mongoose 500s)
-    if (!name || !priceType) {
+    // Basic validation
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'name and priceType are required'
+        message: 'name is required'
       });
     }
 
-    // For both per_kg and per_piece services, clothingPrices should be provided
-    if ((priceType === 'per_kg' || priceType === 'per_piece') && (!clothingPrices || Object.keys(clothingPrices).length === 0)) {
+    // clothingPrices is required
+    if (!clothingPrices || Object.keys(clothingPrices).length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'clothingPrices is required for pricing. Please set prices for each clothing category.'
+        message: 'clothingPrices is required. Please set prices for each clothing category.'
+      });
+    }
+
+    // clothingPriceTypes should be provided for each category
+    if (!clothingPriceTypes || Object.keys(clothingPriceTypes).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'clothingPriceTypes is required. Please set priceType (per_kg or per_piece) for each clothing category.'
+      });
+    }
+
+    // Ensure all categories in clothingPrices have a corresponding priceType
+    const priceCategories = Object.keys(clothingPrices);
+    const priceTypeCategories = Object.keys(clothingPriceTypes);
+    const missingPriceTypes = priceCategories.filter(cat => !priceTypeCategories.includes(cat));
+    
+    if (missingPriceTypes.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing priceType for categories: ${missingPriceTypes.join(', ')}. Please set priceType for each category.`
       });
     }
 
     const allowedPriceTypes = ['per_kg', 'per_piece'];
     const allowedStatuses = ['wash', 'dry', 'iron', 'dry_clean', 'fold'];
     
-    if (!allowedPriceTypes.includes(priceType)) {
-      return res.status(400).json({ success: false, message: 'Invalid priceType. Must be per_kg or per_piece' });
+    // Validate all priceTypes in clothingPriceTypes
+    for (const [category, catPriceType] of Object.entries(clothingPriceTypes)) {
+      if (!allowedPriceTypes.includes(catPriceType)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid priceType for category ${category}. Must be per_kg or per_piece.` 
+        });
+      }
     }
 
     // Validate statuses if provided
@@ -80,13 +107,29 @@ const createService = async (req, res) => {
       validatedClothingPrices[category] = parsedPrice;
     }
 
+    // Validate clothingPriceTypes
+    const validatedClothingPriceTypes = {};
+    for (const [category, catPriceType] of Object.entries(clothingPriceTypes)) {
+      if (!allowedPriceTypes.includes(catPriceType)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid priceType for category ${category}. Must be per_kg or per_piece.` 
+        });
+      }
+      validatedClothingPriceTypes[category] = catPriceType;
+    }
+
+    // Determine legacy priceType (use first category's priceType or provided one)
+    const legacyPriceType = priceType || Object.values(validatedClothingPriceTypes)[0] || 'per_piece';
+
     const service = await Service.create({
       name,
       description,
-      priceType,
+      priceType: legacyPriceType, // Legacy field for backward compatibility
       basePrice: 0, // Base price is not used, all pricing is category-based
       statuses: statuses || ['wash', 'dry'],
       clothingPrices: validatedClothingPrices,
+      clothingPriceTypes: validatedClothingPriceTypes,
       estimatedTime: parsedEstimatedTime,
       icon,
       color
@@ -274,27 +317,119 @@ const getServiceById = async (req, res) => {
 const updateService = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const {
+      name,
+      description,
+      priceType,
+      basePrice,
+      statuses,
+      clothingPrices,
+      clothingPriceTypes,
+      estimatedTime,
+      icon,
+      color,
+      isActive,
+      ...otherFields
+    } = req.body;
     
-    const service = await Service.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
+    const service = await Service.findById(id);
     if (!service) {
       return res.status(404).json({
         success: false,
         message: 'Service not found'
       });
     }
+
+    // Build update object
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (estimatedTime !== undefined) updateData.estimatedTime = Number(estimatedTime);
+    if (icon !== undefined) updateData.icon = icon;
+    if (color !== undefined) updateData.color = color;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (statuses !== undefined) {
+      const allowedStatuses = ['wash', 'dry', 'iron', 'dry_clean', 'fold'];
+      const invalidStatuses = statuses.filter(status => !allowedStatuses.includes(status));
+      if (invalidStatuses.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid statuses: ${invalidStatuses.join(', ')}` 
+        });
+      }
+      updateData.statuses = statuses;
+    }
+
+    // Handle clothingPrices and clothingPriceTypes
+    if (clothingPrices !== undefined) {
+      const validatedClothingPrices = {};
+      for (const [category, price] of Object.entries(clothingPrices)) {
+        const parsedPrice = Number(price);
+        if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: `Invalid price for category ${category}. Price must be a non-negative number.` 
+          });
+        }
+        validatedClothingPrices[category] = parsedPrice;
+      }
+      updateData.clothingPrices = validatedClothingPrices;
+    }
+
+    if (clothingPriceTypes !== undefined) {
+      const allowedPriceTypes = ['per_kg', 'per_piece'];
+      const validatedClothingPriceTypes = {};
+      for (const [category, catPriceType] of Object.entries(clothingPriceTypes)) {
+        if (!allowedPriceTypes.includes(catPriceType)) {
+          return res.status(400).json({ 
+            success: false, 
+            message: `Invalid priceType for category ${category}. Must be per_kg or per_piece.` 
+          });
+        }
+        validatedClothingPriceTypes[category] = catPriceType;
+      }
+      updateData.clothingPriceTypes = validatedClothingPriceTypes;
+      
+      // Update legacy priceType if provided, otherwise use first category's priceType
+      updateData.priceType = priceType || Object.values(validatedClothingPriceTypes)[0] || service.priceType || 'per_piece';
+    } else if (priceType !== undefined) {
+      updateData.priceType = priceType;
+    }
+
+    // Ensure consistency: if clothingPrices are updated, clothingPriceTypes should exist
+    if (updateData.clothingPrices && !updateData.clothingPriceTypes) {
+      // Keep existing clothingPriceTypes if not provided
+      const existingPriceTypes = service.clothingPriceTypes || {};
+      const priceCategories = Object.keys(updateData.clothingPrices);
+      const missingPriceTypes = priceCategories.filter(cat => !existingPriceTypes[cat]);
+      
+      if (missingPriceTypes.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Missing priceType for categories: ${missingPriceTypes.join(', ')}. Please provide clothingPriceTypes.`
+        });
+      }
+    }
+
+    const updatedService = await Service.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
     
     res.json({
       success: true,
       message: 'Service updated successfully',
-      service
+      service: updatedService
     });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: error.errors
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to update service',
@@ -814,10 +949,25 @@ const calculateServicePrice = async (req, res) => {
       });
     }
     
+    // Helper function to get priceType for a category
+    const getCategoryPriceType = (service, category) => {
+      let priceTypesObj = service.clothingPriceTypes;
+      if (service.clothingPriceTypes instanceof Map) {
+        priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+      }
+      if (priceTypesObj && priceTypesObj[category]) {
+        return priceTypesObj[category];
+      }
+      return service.priceType || 'per_piece';
+    };
+    
     let totalPrice = 0;
     let unitPrice = 0;
     
-    // Get clothing-specific price for both per_kg and per_piece
+    // Get category-specific priceType
+    const categoryPriceType = getCategoryPriceType(service, clothingCategory);
+    
+    // Get clothing-specific price
     // Convert Map to Object if necessary
     let pricesObj = service.clothingPrices;
     if (service.clothingPrices instanceof Map) {
@@ -836,7 +986,7 @@ const calculateServicePrice = async (req, res) => {
       });
     }
     
-    switch (service.priceType) {
+    switch (categoryPriceType) {
       case 'per_kg':
         if (weight <= 0) {
           return res.status(400).json({

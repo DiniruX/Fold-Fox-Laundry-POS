@@ -137,6 +137,44 @@ const generateQRCodeData = (order) => {
   };
 };
 
+// Get clothing category label
+const getClothingCategoryLabel = (category) => {
+  const labels = {
+    normal_clothes: 'Normal Clothes',
+    bed_sheets: 'Bed Sheets',
+    towels: 'Towels',
+    blazers: 'Blazers',
+    saree: 'Saree',
+    curtains: 'Curtains',
+    pillowcases: 'Pillowcases',
+    suits: 'Suits',
+    jeans: 'Jeans',
+    blankets: 'Blankets',
+    other: 'Other',
+  };
+  return labels[category] || category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Format service name with clothing category
+const formatServiceNameWithCategory = (serviceName, clothingCategory) => {
+  if (!clothingCategory) return serviceName;
+  const categoryLabel = getClothingCategoryLabel(clothingCategory);
+  return `${serviceName} - ${categoryLabel}`;
+};
+
+// Helper function to get category-specific priceType
+const getCategoryPriceType = (service, category) => {
+  if (!service || !category) return service?.priceType || 'per_piece';
+  let priceTypesObj = service.clothingPriceTypes;
+  if (service.clothingPriceTypes instanceof Map) {
+    priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+  }
+  if (priceTypesObj && priceTypesObj[category]) {
+    return priceTypesObj[category];
+  }
+  return service.priceType || 'per_piece';
+};
+
 module.exports = {
   formatDate,
   formatCurrency,
@@ -152,5 +190,8 @@ module.exports = {
   getDateRangeQuery,
   calculateLoyaltyPoints,
   hasPermission,
-  generateQRCodeData
+  generateQRCodeData,
+  getClothingCategoryLabel,
+  formatServiceNameWithCategory,
+  getCategoryPriceType
 };

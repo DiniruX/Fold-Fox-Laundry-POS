@@ -32,16 +32,30 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
   
   const services = servicesData?.services || [];
 
-  // Update calculation data when service changes
+  // Helper to get category-specific priceType
+  const getCategoryPriceType = (service, category) => {
+    if (!service || !category) return service?.priceType || 'per_piece';
+    let priceTypesObj = service.clothingPriceTypes;
+    if (service.clothingPriceTypes instanceof Map) {
+      priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+    }
+    if (priceTypesObj && priceTypesObj[category]) {
+      return priceTypesObj[category];
+    }
+    return service.priceType || 'per_piece';
+  };
+
+  // Update calculation data when service or category changes
   useEffect(() => {
     if (selectedService) {
-      setCalculationData({
-        quantity: 1,
-        weight: selectedService.priceType === 'per_kg' ? 1 : 0,
-        clothingCategory: 'normal_clothes',
-      });
+      const categoryPriceType = getCategoryPriceType(selectedService, calculationData.clothingCategory);
+      setCalculationData(prev => ({
+        ...prev,
+        quantity: categoryPriceType === 'per_piece' ? 1 : 0,
+        weight: categoryPriceType === 'per_kg' ? 1 : 0,
+      }));
     }
-  }, [selectedService]);
+  }, [selectedService, calculationData.clothingCategory]);
 
   // Calculate price when inputs change
   useEffect(() => {
@@ -175,7 +189,10 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Step 2: Enter Quantity/Weight</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-xl border-2 border-gray-200">
-              {selectedService.priceType === 'per_kg' && (
+              {(() => {
+                const categoryPriceType = getCategoryPriceType(selectedService, calculationData.clothingCategory || 'normal_clothes');
+                return categoryPriceType === 'per_kg';
+              })() && (
                 <div>
                   <Input
                     label="Weight (kg)"
@@ -189,7 +206,10 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
                 </div>
               )}
               
-              {selectedService.priceType === 'per_piece' && (
+              {(() => {
+                const categoryPriceType = getCategoryPriceType(selectedService, calculationData.clothingCategory || 'normal_clothes');
+                return categoryPriceType === 'per_piece';
+              })() && (
                 <>
                   <div>
                     <Input
@@ -260,30 +280,46 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
               <div className="flex justify-between items-center py-2 border-t border-gray-200">
                 <span className="text-sm font-medium text-gray-600">Price Type:</span>
                 <span className="text-sm font-semibold text-gray-900">
-                  {getPriceTypeLabel(calculationResult.service.priceType) || 'Unknown'}
+                  {(() => {
+                    const categoryPriceType = getCategoryPriceType(
+                      calculationResult.service, 
+                      calculationData.clothingCategory || 'normal_clothes'
+                    );
+                    return getPriceTypeLabel(categoryPriceType) || 'Unknown';
+                  })()}
                 </span>
               </div>
               
               <div className="flex justify-between items-center py-2 border-t border-gray-200">
                 <span className="text-sm font-medium text-gray-600">Unit Price:</span>
                 <span className="text-sm font-semibold text-gray-900">
-                  {formatPrice(calculationResult.calculation.unitPrice || 0, calculationResult.service.priceType || 'per_kg')}
+                  {(() => {
+                    const categoryPriceType = getCategoryPriceType(
+                      calculationResult.service, 
+                      calculationData.clothingCategory || 'normal_clothes'
+                    );
+                    return formatPrice(calculationResult.calculation.unitPrice || 0, categoryPriceType || 'per_kg');
+                  })()}
                 </span>
               </div>
 
-              {calculationResult.service.priceType === 'per_piece' && (
-                <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                  <span className="text-sm font-medium text-gray-600">Quantity:</span>
-                  <span className="text-sm font-bold text-gray-900">{calculationResult.calculation.quantity || 0} pieces</span>
-                </div>
-              )}
-
-              {calculationResult.service.priceType === 'per_kg' && (
-                <div className="flex justify-between items-center py-2 border-t border-gray-200">
-                  <span className="text-sm font-medium text-gray-600">Weight:</span>
-                  <span className="text-sm font-bold text-gray-900">{calculationResult.calculation.weight || 0} kg</span>
-                </div>
-              )}
+              {(() => {
+                const categoryPriceType = getCategoryPriceType(
+                  calculationResult.service, 
+                  calculationData.clothingCategory || 'normal_clothes'
+                );
+                return categoryPriceType === 'per_piece' ? (
+                  <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Quantity:</span>
+                    <span className="text-sm font-bold text-gray-900">{calculationResult.calculation.quantity || 0} pieces</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center py-2 border-t border-gray-200">
+                    <span className="text-sm font-medium text-gray-600">Weight:</span>
+                    <span className="text-sm font-bold text-gray-900">{calculationResult.calculation.weight || 0} kg</span>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-between items-center py-4 border-t-2 border-gray-300 mt-3">
                 <span className="text-lg font-bold text-gray-900">Total Price:</span>
@@ -299,86 +335,48 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
                 <span className="mr-2">📊</span> Calculation Breakdown
               </h4>
               <div className="text-sm font-medium text-gray-700">
-                {calculationResult.service.priceType === 'per_kg' && (
-                  <p>
-                    {calculationResult.calculation.weight || 0} kg × LKR {calculationResult.calculation.unitPrice || 0} = <span className="text-green-600 font-bold">LKR {calculationResult.calculation.totalPrice || 0}</span>
-                  </p>
-                )}
-                {calculationResult.service.priceType === 'per_piece' && (
-                  <p>
-                    {calculationResult.calculation.quantity || 0} pieces × LKR {calculationResult.calculation.unitPrice || 0} = <span className="text-green-600 font-bold">LKR {calculationResult.calculation.totalPrice || 0}</span>
-                  </p>
-                )}
+                {(() => {
+                  const categoryPriceType = getCategoryPriceType(
+                    calculationResult.service, 
+                    calculationData.clothingCategory || 'normal_clothes'
+                  );
+                  return categoryPriceType === 'per_kg' ? (
+                    <p>
+                      {calculationResult.calculation.weight || 0} kg × LKR {calculationResult.calculation.unitPrice || 0} = <span className="text-green-600 font-bold">LKR {calculationResult.calculation.totalPrice || 0}</span>
+                    </p>
+                  ) : (
+                    <p>
+                      {calculationResult.calculation.quantity || 0} pieces × LKR {calculationResult.calculation.unitPrice || 0} = <span className="text-green-600 font-bold">LKR {calculationResult.calculation.totalPrice || 0}</span>
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           </div>
         )}
 
         {/* Enhanced Quick Calculations */}
-        {selectedService && (
+        {selectedService && selectedService.clothingPrices && Object.keys(selectedService.clothingPrices).length > 0 && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <span className="mr-2">⚡</span> Quick Reference Prices
+              <span className="mr-2">⚡</span> Quick Reference Prices by Category
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {selectedService.priceType === 'per_piece' && (
-                <>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">1 Piece</p>
+              {Object.entries(selectedService.clothingPrices).map(([category, price]) => {
+                const categoryPriceType = getCategoryPriceType(selectedService, category);
+                const categoryLabel = getClothingCategoryLabel(category);
+                return (
+                  <div key={category} className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
+                    <p className="text-xs text-gray-600 mb-1">{categoryLabel}</p>
                     <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {selectedService.clothingPrices?.normal_clothes || 'N/A'}
+                      LKR {price}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {categoryPriceType === 'per_kg' ? 'per kg' : 'per piece'}
                     </p>
                   </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">Bed Sheets</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {selectedService.clothingPrices?.bed_sheets || 'N/A'}
-                    </p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">Suits</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {selectedService.clothingPrices?.suits || 'N/A'}
-                    </p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">Jeans</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {selectedService.clothingPrices?.jeans || 'N/A'}
-                    </p>
-                  </div>
-                </>
-              )}
-              
-              {selectedService.priceType === 'per_kg' && (
-                <>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">1 kg</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {selectedService.basePrice}
-                    </p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">5 kg</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {(selectedService.basePrice * 5).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">10 kg</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {(selectedService.basePrice * 10).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl text-center border-2 border-gray-200 hover:border-orange-300 transition-colors">
-                    <p className="text-xs text-gray-600 mb-1">20 kg</p>
-                    <p className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                      LKR {(selectedService.basePrice * 20).toFixed(2)}
-                    </p>
-                  </div>
-                </>
-              )}
-
+                );
+              })}
             </div>
           </div>
         )}

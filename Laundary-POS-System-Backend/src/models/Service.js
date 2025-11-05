@@ -11,11 +11,11 @@ const serviceSchema = new mongoose.Schema({
   priceType: {
     type: String,
     enum: ['per_kg', 'per_piece'],
-    required: true
+    required: false // Now optional, kept for backward compatibility
   },
   basePrice: {
     type: Number,
-    required: [true, 'Base price is required'],
+    required: false, // Optional if using clothingPrices
     min: [0, 'Price cannot be negative']
   },
   statuses: {
@@ -26,6 +26,16 @@ const serviceSchema = new mongoose.Schema({
   clothingPrices: {
     type: Map,
     of: Number,
+    default: {}
+  },
+  // New: Store priceType for each clothing category
+  clothingPriceTypes: {
+    type: Map,
+    of: {
+      type: String,
+      enum: ['per_kg', 'per_piece'],
+      default: 'per_piece'
+    },
     default: {}
   },
   isActive: {

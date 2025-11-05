@@ -28,7 +28,22 @@ import {
   useOrder,
   useDeleteOrder,
 } from '../services/orderService';
+import { getClothingCategoryLabel } from '../services/serviceService';
 import Button from '../components/ui/Button';
+
+// Helper function to get category-specific priceType
+const getCategoryPriceType = (service, category) => {
+  if (!service || !category) return service?.priceType || 'per_piece';
+  let priceTypesObj = service.clothingPriceTypes;
+  if (service.clothingPriceTypes instanceof Map) {
+    priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
+  }
+  if (priceTypesObj && priceTypesObj[category]) {
+    return priceTypesObj[category];
+  }
+  return service.priceType || 'per_piece';
+};
+
 import PaymentModal from '../components/orders/PaymentModal';
 import ReceiptModal from '../components/orders/ReceiptModal';
 import OrderStatusManager from '../components/orders/OrderStatusManager';
@@ -183,7 +198,10 @@ Questions? Call us!`;
     if (order.items && order.items.length > 0) {
       itemsList = order.items.map(item => {
         const qty = item.weight > 0 ? `${item.weight}kg` : `${item.quantity}pcs`;
-        return `- ${item.serviceName}: ${qty} = ${formatOrderAmount(item.totalPrice)}`;
+        const serviceDisplay = item.clothingCategory 
+          ? `${item.serviceName} - ${getClothingCategoryLabel(item.clothingCategory)}`
+          : item.serviceName;
+        return `- ${serviceDisplay}: ${qty} = ${formatOrderAmount(item.totalPrice)}`;
       }).join('\n');
     }
 
@@ -736,30 +754,40 @@ Continue with deletion?`)) {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {order.items?.map((item, index) => (
-                          <tr key={index} className="hover:bg-orange-50 transition-colors duration-150">
-                            <td className="px-4 py-4">
-                              <div className="text-sm font-semibold text-gray-900">{item.serviceName}</div>
-                              {item.notes && (
-                                <div className="text-xs text-gray-600 mt-1 italic">📝 {item.notes}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 text-sm font-medium text-gray-700">
-                              {item.quantity} {item.weight > 0 && `(${item.weight}kg)`}
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 shadow-sm">
-                                {item.clothingCategory?.replace('_', ' ').toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right">
-                              {formatOrderAmount(item.unitPrice)}
-                            </td>
-                            <td className="px-4 py-4 text-base font-bold text-right" style={{ color: '#fe7f2d' }}>
-                              {formatOrderAmount(item.totalPrice)}
-                            </td>
-                          </tr>
-                        ))}
+                        {order.items?.map((item, index) => {
+                          const serviceDisplay = item.clothingCategory 
+                            ? `${item.serviceName} - ${getClothingCategoryLabel(item.clothingCategory)}`
+                            : item.serviceName;
+                          const categoryPriceType = getCategoryPriceType(item.service, item.clothingCategory);
+                          const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
+                          return (
+                            <tr key={index} className="hover:bg-orange-50 transition-colors duration-150">
+                              <td className="px-4 py-4">
+                                <div className="text-sm font-semibold text-gray-900">{serviceDisplay}</div>
+                                {item.notes && (
+                                  <div className="text-xs text-gray-600 mt-1 italic">📝 {item.notes}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 text-sm font-medium text-gray-700">
+                                {categoryPriceType === 'per_kg' 
+                                  ? `${item.weight || 0} kg` 
+                                  : `${item.quantity || 0} pcs`}
+                                <span className="text-xs text-gray-500 ml-1">({categoryPriceType === 'per_kg' ? 'per kg' : 'per piece'})</span>
+                              </td>
+                              <td className="px-4 py-4">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 shadow-sm">
+                                  {item.clothingCategory?.replace(/_/g, ' ').toUpperCase()}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-sm font-semibold text-gray-900 text-right">
+                                {formatOrderAmount(item.unitPrice)} <span className="text-xs text-gray-500">{priceTypeLabel}</span>
+                              </td>
+                              <td className="px-4 py-4 text-base font-bold text-right" style={{ color: '#fe7f2d' }}>
+                                {formatOrderAmount(item.totalPrice)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                       <tfoot className="bg-gray-50">
                         <tr>

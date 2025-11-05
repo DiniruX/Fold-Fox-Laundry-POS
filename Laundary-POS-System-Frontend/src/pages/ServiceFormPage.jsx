@@ -29,6 +29,7 @@ const ServiceFormPage = () => {
     clothingCategory: 'normal_clothes',
   });
   const [clothingPrices, setClothingPrices] = useState({});
+  const [clothingPriceTypes, setClothingPriceTypes] = useState({}); // New: priceType per category
   const [priceCalculation, setPriceCalculation] = useState(null);
 
   const isEditing = !!id;
@@ -93,6 +94,12 @@ const ServiceFormPage = () => {
       };
       reset(formData);
       setClothingPrices(dataToLoad.clothingPrices || {});
+      // Convert Map to Object if necessary
+      let priceTypesObj = dataToLoad.clothingPriceTypes;
+      if (dataToLoad.clothingPriceTypes instanceof Map) {
+        priceTypesObj = Object.fromEntries(dataToLoad.clothingPriceTypes);
+      }
+      setClothingPriceTypes(priceTypesObj || {});
     } else {
       reset({
         name: '',
@@ -107,6 +114,7 @@ const ServiceFormPage = () => {
         isActive: true,
       });
       setClothingPrices({});
+      setClothingPriceTypes({});
     }
   }, [service, duplicateFrom, reset]);
 
@@ -116,6 +124,7 @@ const ServiceFormPage = () => {
       const submitData = {
         ...data,
         clothingPrices: clothingPrices,
+        clothingPriceTypes: clothingPriceTypes, // Include category-specific priceTypes
       };
       
       if (isEditing) {
@@ -174,8 +183,23 @@ const ServiceFormPage = () => {
       newPrices[category] = parseFloat(price);
     } else {
       delete newPrices[category];
+      // Also remove priceType if price is removed
+      const newPriceTypes = { ...clothingPriceTypes };
+      delete newPriceTypes[category];
+      setClothingPriceTypes(newPriceTypes);
     }
     setClothingPrices(newPrices);
+  };
+
+  // Handle clothing priceType updates
+  const handleClothingPriceTypeUpdate = (category, priceType) => {
+    const newPriceTypes = { ...clothingPriceTypes };
+    if (priceType) {
+      newPriceTypes[category] = priceType;
+    } else {
+      delete newPriceTypes[category];
+    }
+    setClothingPriceTypes(newPriceTypes);
   };
 
   const isLoading = createServiceMutation.isPending || updateServiceMutation.isPending || isLoadingService;
@@ -367,30 +391,38 @@ const ServiceFormPage = () => {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="text-md font-medium text-gray-900 mb-3">Clothing Category Pricing</h4>
                     <p className="text-sm text-gray-600 mb-4">
-                      {watchedPriceType === 'per_kg' 
-                        ? 'Set different prices per kilogram for different types of clothing items:'
-                        : 'Set different prices per piece for different types of clothing items:'}
+                      Set different prices and price types (per kg or per piece) for different types of clothing items:
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
-                        <div key={key}>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            {getClothingCategoryLabel(category)} {watchedPriceType === 'per_kg' ? '(per kg)' : '(per piece)'}
+                        <div key={key} className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            {getClothingCategoryLabel(category)}
                           </label>
+                          {/* Price Type Selector */}
+                          <select
+                            value={clothingPriceTypes[category] || watchedPriceType || 'per_piece'}
+                            onChange={(e) => handleClothingPriceTypeUpdate(category, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          >
+                            <option value="per_piece">Per Piece</option>
+                            <option value="per_kg">Per Kilogram</option>
+                          </select>
+                          {/* Price Input */}
                           <input
                             type="number"
                             step="0.01"
                             min="0"
                             value={clothingPrices[category] || ''}
                             onChange={(e) => handleClothingPriceUpdate(category, e.target.value)}
-                            placeholder="Enter price"
+                            placeholder={`Enter price (${(clothingPriceTypes[category] || watchedPriceType || 'per_piece') === 'per_kg' ? 'per kg' : 'per piece'})`}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       ))}
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      Enter the price for each clothing category. All categories must have a price set.
+                      Select price type (per kg or per piece) and enter the price for each clothing category. All categories must have a price set.
                     </p>
                   </div>
                 )}
