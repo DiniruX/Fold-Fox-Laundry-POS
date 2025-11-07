@@ -24,16 +24,16 @@ export const ROUTES = {
 
 // Order Status - Simplified Workflow
 export const ORDER_STATUS = {
-  PICKUP: 'pickup',           // If pickup required
-  RECEIVED: 'received',       // After pickup or for self-service
-  WASHING: 'washing',         // Based on service statuses
-  DRYING: 'drying',           // Based on service statuses
-  IRONING: 'ironing',         // Based on service statuses
+  PICKUP: 'pickup',             // If pickup required
+  RECEIVED: 'received',         // After pickup or for self-service
+  WASHING: 'washing',           // Based on service statuses
+  DRYING: 'drying',             // Based on service statuses
+  IRONING: 'ironing',           // Based on service statuses
   DRY_CLEANING: 'dry_cleaning', // Based on service statuses
-  FOLDING: 'folding',         // Based on service statuses
-  COMPLETE: 'complete',       // All services completed
-  DELIVER: 'deliver',         // If delivery required
-  CANCELLED: 'cancelled'
+  FOLDING: 'folding',           // Based on service statuses
+  PACKING: 'packing',           // Items packed and ready
+  DELIVER: 'deliver',           // If delivery required
+  COMPLETE: 'complete'          // Order fully complete
 };
 
 // Order Types (simplified - removed, keeping for backward compatibility)

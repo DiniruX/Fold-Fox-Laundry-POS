@@ -5,7 +5,6 @@ import {
   TruckIcon,
   CubeIcon,
   SparklesIcon,
-  XCircleIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
@@ -77,15 +76,15 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
       emoji: '📦',
       icon: CubeIcon, 
       color: 'green',
-      description: 'Folding/packaging in progress'
+      description: 'Folding in progress'
     },
     { 
-      value: 'complete', 
-      label: 'Complete', 
-      emoji: '✨',
-      icon: SparklesIcon, 
-      color: 'emerald',
-      description: 'All services finished'
+      value: 'packing', 
+      label: 'Packing', 
+      emoji: '🎁',
+      icon: CubeIcon, 
+      color: 'amber',
+      description: 'Items being packed and sealed'
     },
     { 
       value: 'deliver', 
@@ -96,12 +95,12 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
       description: 'Ready for delivery'
     },
     { 
-      value: 'cancelled', 
-      label: 'Cancelled', 
-      emoji: '❌',
-      icon: XCircleIcon, 
-      color: 'red',
-      description: 'Order cancelled'
+      value: 'complete', 
+      label: 'Complete', 
+      emoji: '✨',
+      icon: SparklesIcon, 
+      color: 'emerald',
+      description: 'Order fully completed'
     },
   ];
 
@@ -161,18 +160,16 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
       }
     });
 
-    // Step 4: Always add complete
-    statuses.push('complete');
+    // Step 4: Add packing stage
+    statuses.push('packing');
 
     // Step 5: Add deliver if required
     if (order.deliveryRequired) {
       statuses.push('deliver');
     }
 
-    // Step 6: Always allow cancelled
-    if (!statuses.includes('cancelled')) {
-      statuses.push('cancelled');
-    }
+    // Step 6: Always add complete as final stage
+    statuses.push('complete');
 
     return statuses;
   }, [order]);
@@ -202,9 +199,6 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
 
   // Check if status is accessible (can be updated to)
   const isStatusAccessible = (statusValue) => {
-    if (order.status === 'cancelled') return statusValue === 'cancelled';
-    if (statusValue === 'cancelled') return true; // Can always cancel
-    
     const statusIndex = timelineStatuses.findIndex(s => s.value === statusValue);
     const currentIdx = timelineStatuses.findIndex(s => s.value === order.status);
     
@@ -254,6 +248,7 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
       pink: { bg: 'bg-pink-100', text: 'text-pink-600', border: 'border-pink-300' },
       green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-300' },
       emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', border: 'border-emerald-300' },
+      amber: { bg: 'bg-amber-100', text: 'text-amber-600', border: 'border-amber-300' },
       teal: { bg: 'bg-teal-100', text: 'text-teal-600', border: 'border-teal-300' },
       red: { bg: 'bg-red-100', text: 'text-red-600', border: 'border-red-300' },
     };
@@ -341,7 +336,7 @@ const OrderStatusManager = ({ order, onStatusUpdate }) => {
                       </div>
                       
                       {/* Quick Update Button */}
-                      {isStatusAccessible(status.value) && !isCurrent && status.value !== 'cancelled' && (
+                      {isStatusAccessible(status.value) && !isCurrent && (
                         <Button
                           onClick={() => openUpdateModal(status.value)}
                           variant="outline"

@@ -9,7 +9,6 @@ import {
 } from '@heroicons/react/24/outline';
 import {
   useServiceStats,
-  formatPrice,
   getPriceTypeLabel,
 } from '../../services/serviceService';
 import LoadingSpinner from '../ui/LoadingSpinner';
@@ -52,9 +51,9 @@ const ServiceAnalytics = () => {
   // Get price type colors
   const getPriceTypeColor = (priceType) => {
     const colors = {
+      per_piece: 'bg-blue-500',
       per_kg: 'bg-green-500',
-      per_item: 'bg-blue-500',
-      flat_rate: 'bg-purple-500',
+      mixed: 'bg-purple-500',
     };
     return colors[priceType] || 'bg-gray-500';
   };

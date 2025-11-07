@@ -48,22 +48,25 @@ const determineNextStatus = (currentStatus, serviceStatuses, pickupRequired, del
         return serviceStatusOrder[i];
       }
     }
-    // If no more services, move to complete
+    // If no more services, move to packing
+    return 'packing';
+  }
+
+  // If status is packing, determine if delivery is needed or mark complete
+  if (currentStatus === 'packing') {
+    if (deliveryRequired) {
+      return 'deliver';
+    }
     return 'complete';
   }
 
-  // If status is complete, determine if delivery is needed
-  if (currentStatus === 'complete') {
-    if (deliveryRequired) {
-      return 'deliver';
-    } else {
-      return 'complete'; // Stay complete for self-service orders
-    }
+  // If status is deliver, mark order complete
+  if (currentStatus === 'deliver') {
+    return 'complete';
   }
 
-  // If status is deliver, stay deliver (no further progression needed)
-  if (currentStatus === 'deliver') {
-    return 'deliver';
+  if (currentStatus === 'complete') {
+    return 'complete';
   }
 
   return currentStatus; // Return current status if no progression
@@ -712,7 +715,7 @@ const updateOrderStatus = async (req, res) => {
 
     const validStatuses = [
       'pickup', 'received', 'washing', 'drying', 'ironing', 
-      'dry_cleaning', 'folding', 'complete', 'deliver', 'cancelled'
+      'dry_cleaning', 'folding', 'packing', 'deliver', 'complete'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -757,19 +760,11 @@ const updateOrderStatus = async (req, res) => {
     await order.updateStatus(newStatus, staffId, notes);
 
     // Handle phase transitions based on status changes
-    // Transition to completed phase when order reaches complete or deliver status
-    if ((newStatus === 'complete' || newStatus === 'deliver') && order.orderPhase === 'processing') {
+    // Transition to completed phase when order reaches final statuses
+    if ((newStatus === 'deliver' || newStatus === 'complete') && order.orderPhase === 'processing') {
       order.transitionPhase('completed', `Order ${newStatus === 'deliver' ? 'ready for delivery' : 'completed'}`);
       await order.save();
       console.log(`Order ${order.orderNumber} transitioned to completed phase (status: ${newStatus})`);
-    }
-
-    // Transition to cancelled phase when order is cancelled
-    if (newStatus === 'cancelled' && order.orderPhase !== 'cancelled') {
-      order.orderPhase = 'cancelled';
-      order.isEditable = false;
-      await order.save();
-      console.log(`Order ${order.orderNumber} transitioned to cancelled phase`);
     }
 
     res.json({

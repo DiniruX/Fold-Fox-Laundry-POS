@@ -176,7 +176,7 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
         </button>
 
         <button
-          onClick={() => handleFilterChange('status', 'pending')}
+          onClick={() => handleFilterChange('status', 'pickup')}
           className="bg-white p-6 rounded-xl shadow-md border-2 border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all duration-200 text-left"
         >
           <div className="flex items-center justify-between">

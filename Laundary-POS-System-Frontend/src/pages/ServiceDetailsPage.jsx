@@ -15,9 +15,11 @@ import {
   useService,
   useServiceAnalytics,
   useDeleteService,
-  formatPrice,
-  getPriceTypeLabel,
   getStatusBadgeColor,
+  getServicePricingLabel,
+  getServicePriceTypeSummary,
+  getServiceMinPrice,
+  getServiceMaxPrice,
 } from '../services/serviceService';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
@@ -78,6 +80,17 @@ const ServiceDetailsPage = () => {
   const handleEdit = () => {
     navigate(`/services/edit/${service._id}`);
   };
+
+  const pricingLabel = getServicePricingLabel(service);
+  const priceTypeSummary = getServicePriceTypeSummary(service);
+  const minPrice = getServiceMinPrice(service);
+  const maxPrice = getServiceMaxPrice(service);
+
+  let clothingPricesObj = service.clothingPrices;
+  if (service.clothingPrices instanceof Map) {
+    clothingPricesObj = Object.fromEntries(service.clothingPrices);
+  }
+  clothingPricesObj = clothingPricesObj || {};
 
   const {
     overview = {},
@@ -177,23 +190,22 @@ const ServiceDetailsPage = () => {
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase">Price Type</label>
                   <p className="text-sm font-semibold text-gray-900 mt-1">
-                    {getPriceTypeLabel(service.priceType)}
+                    {pricingLabel}
                   </p>
                 </div>
               </div>
-              {service.clothingPrices && Object.keys(service.clothingPrices).length > 0 && (
+              {Object.keys(clothingPricesObj).length > 0 && (
                 <div className="pt-3 border-t border-gray-200">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
                     Clothing Category Prices
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(service.clothingPrices).map(([category, price]) => {
-                      // Get category-specific priceType
+                    {Object.entries(clothingPricesObj).map(([category, price]) => {
                       let priceTypesObj = service.clothingPriceTypes;
                       if (service.clothingPriceTypes instanceof Map) {
                         priceTypesObj = Object.fromEntries(service.clothingPriceTypes);
                       }
-                      const categoryPriceType = priceTypesObj?.[category] || service.priceType || 'per_piece';
+                      const categoryPriceType = priceTypesObj?.[category] || priceTypeSummary || 'per_piece';
                       const priceTypeLabel = categoryPriceType === 'per_kg' ? 'per kg' : 'per piece';
                       
                       return (
@@ -334,18 +346,17 @@ const ServiceDetailsPage = () => {
             Pricing Information
           </h3>
           <p className="text-sm text-gray-700">
-            This service uses <span className="font-semibold">{getPriceTypeLabel(service.priceType)}</span> pricing with different rates for each clothing category.
-            The final price will be calculated based on the selected clothing category and the {service.priceType === 'per_kg' ? 'weight' : 'quantity'}.
+            This service uses <span className="font-semibold">{pricingLabel}</span> with rates defined for each clothing category. The final price is calculated using the price type attached to the selected clothing category (per kilogram or per piece).
           </p>
-          {service.clothingPrices && Object.keys(service.clothingPrices).length > 0 && (
+          {Object.keys(clothingPricesObj).length > 0 && (
             <div className="mt-3 p-3 bg-white rounded-lg">
               <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Price Range:</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-700">
-                  From <span className="font-bold text-green-600">LKR {Math.min(...Object.values(service.clothingPrices))}</span>
+                  From <span className="font-bold text-green-600">LKR {minPrice}</span>
                 </span>
                 <span className="text-sm text-gray-700">
-                  To <span className="font-bold text-orange-600">LKR {Math.max(...Object.values(service.clothingPrices))}</span>
+                  To <span className="font-bold text-orange-600">LKR {maxPrice}</span>
                 </span>
               </div>
             </div>

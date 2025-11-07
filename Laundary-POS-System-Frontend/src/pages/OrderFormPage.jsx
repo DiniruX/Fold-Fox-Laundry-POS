@@ -9,6 +9,8 @@ import {
 import {
   getClothingCategoryLabel,
   useServices,
+  getServicePricingLabel,
+  getServiceMinPrice,
 } from '../services/serviceService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -558,9 +560,9 @@ const OrderFormPage = () => {
                                 <option value="">Select a service</option>
                                 {services.map((service) => (
                                   <option key={service._id} value={service._id}>
-                                    {service.name} - LKR {service.basePrice}
-                                  </option>
-                                ))}
+                                    {service.name} - LKR {getServiceMinPrice(service)} ({getServicePricingLabel(service)})
+                                   </option>
+                                 ))}
                               </select>
                               {errors.items?.[index]?.serviceId && (
                                 <p className="mt-1 text-sm text-red-600">{errors.items[index].serviceId.message}</p>

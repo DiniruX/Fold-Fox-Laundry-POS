@@ -22,11 +22,13 @@ import {
   useToggleServiceStatus,
   useBulkUpdateServices,
   useDuplicateService,
-  formatPrice,
   getPriceTypeLabel,
   getStatusLabel,
   getStatusBadgeColor,
   getStatusColor,
+  getServiceMinPrice,
+  getServiceMaxPrice,
+  getServicePricingLabel,
 } from '../../services/serviceService';
 import { SERVICE_PRICE_TYPES, SERVICE_STATUSES } from '../../constants';
 import Button from '../ui/Button';
@@ -410,16 +412,25 @@ const ServiceList = ({ onEdit, onView, onBulkSelect }) => {
                   <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-gray-100">
                     <div>
                       <p className="text-xs text-gray-500">Price Range</p>
-                      {service.clothingPrices && Object.keys(service.clothingPrices).length > 0 ? (
-                        <div>
-                          <p className="text-sm font-bold" style={{ color: '#fe7f2d' }}>
-                            LKR {Math.min(...Object.values(service.clothingPrices))} - {Math.max(...Object.values(service.clothingPrices))}
-                          </p>
-                          <p className="text-xs text-gray-500">{getPriceTypeLabel(service.priceType)}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-500">No prices set</p>
-                      )}
+                      {(() => {
+                        let pricesObj = service.clothingPrices;
+                        if (service.clothingPrices instanceof Map) {
+                          pricesObj = Object.fromEntries(service.clothingPrices);
+                        }
+                        pricesObj = pricesObj || {};
+                        const hasPricing = Object.keys(pricesObj).length > 0;
+                        if (!hasPricing) {
+                          return <p className="text-xs text-gray-500">No prices set</p>;
+                        }
+                        return (
+                          <div>
+                            <p className="text-sm font-bold" style={{ color: '#fe7f2d' }}>
+                              LKR {getServiceMinPrice(service)} - {getServiceMaxPrice(service)}
+                            </p>
+                            <p className="text-xs text-gray-500">{getServicePricingLabel(service)}</p>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Est. Time</p>
@@ -606,18 +617,27 @@ const ServiceList = ({ onEdit, onView, onBulkSelect }) => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {service.clothingPrices && Object.keys(service.clothingPrices).length > 0 ? (
-                      <div>
-                        <div className="text-sm font-bold" style={{ color: '#fe7f2d' }}>
-                          LKR {Math.min(...Object.values(service.clothingPrices))} - {Math.max(...Object.values(service.clothingPrices))}
+                    {(() => {
+                      let pricesObj = service.clothingPrices;
+                      if (service.clothingPrices instanceof Map) {
+                        pricesObj = Object.fromEntries(service.clothingPrices);
+                      }
+                      pricesObj = pricesObj || {};
+                      const hasPricing = Object.keys(pricesObj).length > 0;
+                      if (!hasPricing) {
+                        return <div className="text-xs text-gray-500">No prices set</div>;
+                      }
+                      return (
+                        <div>
+                          <div className="text-sm font-bold" style={{ color: '#fe7f2d' }}>
+                            LKR {getServiceMinPrice(service)} - {getServiceMaxPrice(service)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {getServicePricingLabel(service)}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {getPriceTypeLabel(service.priceType)}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-500">No prices set</div>
-                    )}
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-lg shadow-sm ${getStatusBadgeColor(service.isActive)}`}>

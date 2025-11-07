@@ -56,7 +56,7 @@ const getDashboardStats = async (req, res) => {
     
     // Pending orders
     const pendingOrders = await Order.countDocuments({
-      orderStatus: { $nin: ['delivered', 'cancelled'] }
+      status: { $nin: ['deliver', 'complete'] }
     });
     
     res.json({

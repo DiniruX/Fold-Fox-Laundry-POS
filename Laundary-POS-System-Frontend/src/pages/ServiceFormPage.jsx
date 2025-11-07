@@ -6,13 +6,11 @@ import {
   useService,
   useCreateService,
   useUpdateService,
-  useCalculateServicePrice,
-  getPriceTypeLabel,
   getStatusLabel,
   getClothingCategoryLabel,
   serviceValidation,
 } from '../services/serviceService';
-import { SERVICE_PRICE_TYPES, SERVICE_STATUSES, CLOTHING_CATEGORIES } from '../constants';
+import { SERVICE_STATUSES, CLOTHING_CATEGORIES } from '../constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -22,15 +20,8 @@ const ServiceFormPage = () => {
   const { id } = useParams();
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calculatorData, setCalculatorData] = useState({
-    quantity: 1,
-    weight: 0,
-    clothingCategory: 'normal_clothes',
-  });
   const [clothingPrices, setClothingPrices] = useState({});
   const [clothingPriceTypes, setClothingPriceTypes] = useState({}); // New: priceType per category
-  const [priceCalculation, setPriceCalculation] = useState(null);
 
   const isEditing = !!id;
   const title = isEditing ? 'Edit Service' : 'Create New Service';
@@ -58,8 +49,6 @@ const ServiceFormPage = () => {
     defaultValues: {
       name: '',
       description: '',
-      priceType: 'per_piece',
-      basePrice: 0,
       statuses: ['wash', 'dry'],
       clothingPrices: {},
       estimatedTime: 60,
@@ -69,22 +58,21 @@ const ServiceFormPage = () => {
     },
   });
 
-  const watchedPriceType = watch('priceType');
-  const watchedBasePrice = watch('basePrice');
-
   const createServiceMutation = useCreateService();
   const updateServiceMutation = useUpdateService();
-  const calculatePriceMutation = useCalculateServicePrice();
 
   // Reset form when service or duplicate data changes
   useEffect(() => {
     const dataToLoad = service || duplicateFrom;
+    const defaultPriceTypes = Object.values(CLOTHING_CATEGORIES).reduce((acc, category) => {
+      acc[category] = 'per_piece';
+      return acc;
+    }, {});
+
     if (dataToLoad) {
       const formData = {
         name: duplicateFrom ? `${dataToLoad.name} (Copy)` : (dataToLoad.name || ''),
         description: dataToLoad.description || '',
-        priceType: dataToLoad.priceType || 'per_piece',
-        basePrice: dataToLoad.basePrice || 0,
         statuses: dataToLoad.statuses || ['wash', 'dry'],
         clothingPrices: dataToLoad.clothingPrices || {},
         estimatedTime: dataToLoad.estimatedTime || 60,
@@ -99,13 +87,11 @@ const ServiceFormPage = () => {
       if (dataToLoad.clothingPriceTypes instanceof Map) {
         priceTypesObj = Object.fromEntries(dataToLoad.clothingPriceTypes);
       }
-      setClothingPriceTypes(priceTypesObj || {});
+      setClothingPriceTypes({ ...defaultPriceTypes, ...(priceTypesObj || {}) });
     } else {
       reset({
         name: '',
         description: '',
-        priceType: 'per_piece',
-        basePrice: 0,
         statuses: ['wash', 'dry'],
         clothingPrices: {},
         estimatedTime: 60,
@@ -114,15 +100,21 @@ const ServiceFormPage = () => {
         isActive: true,
       });
       setClothingPrices({});
-      setClothingPriceTypes({});
+      setClothingPriceTypes(defaultPriceTypes);
     }
   }, [service, duplicateFrom, reset]);
 
   // Handle form submission
   const onSubmit = async (data) => {
     try {
+      const priceValues = Object.values(clothingPrices || {});
+      const basePrice = priceValues.length > 0 ? Math.min(...priceValues) : 0;
+      const legacyPriceType = Object.values(clothingPriceTypes || {})[0] || 'per_piece';
+
       const submitData = {
         ...data,
+        priceType: legacyPriceType,
+        basePrice,
         clothingPrices: clothingPrices,
         clothingPriceTypes: clothingPriceTypes, // Include category-specific priceTypes
       };
@@ -143,30 +135,6 @@ const ServiceFormPage = () => {
     }
   };
 
-  // Handle price calculation
-  const handleCalculatePrice = async () => {
-    if (!watchedBasePrice || watchedBasePrice <= 0) {
-      return;
-    }
-
-    try {
-      const response = await calculatePriceMutation.mutateAsync({
-        id: service?._id || 'temp', // For preview, we can use a temp ID
-        data: calculatorData,
-      });
-      setPriceCalculation(response.data);
-    } catch (error) {
-      // Error handled by mutation
-    }
-  };
-
-  // Update calculator when price type or base price changes
-  useEffect(() => {
-    if (showCalculator && watchedBasePrice && watchedBasePrice > 0) {
-      handleCalculatePrice();
-    }
-  }, [watchedPriceType, watchedBasePrice, calculatorData]);
-
   // Handle status selection
   const handleStatusToggle = (status) => {
     const currentStatuses = watch('statuses') || [];
@@ -179,8 +147,9 @@ const ServiceFormPage = () => {
   // Handle clothing price updates
   const handleClothingPriceUpdate = (category, price) => {
     const newPrices = { ...clothingPrices };
-    if (price && price > 0) {
-      newPrices[category] = parseFloat(price);
+    const parsedPrice = price === '' ? NaN : parseFloat(price);
+    if (!Number.isNaN(parsedPrice) && parsedPrice >= 0) {
+      newPrices[category] = parsedPrice;
     } else {
       delete newPrices[category];
       // Also remove priceType if price is removed
@@ -365,67 +334,43 @@ const ServiceFormPage = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Price Type
-                    </label>
-                    <select
-                      {...register('priceType', serviceValidation.priceType)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {Object.entries(SERVICE_PRICE_TYPES).map(([key, value]) => (
-                        <option key={key} value={value}>
-                          {getPriceTypeLabel(value)}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.priceType && (
-                      <p className="mt-1 text-sm text-red-600">{errors.priceType.message}</p>
-                    )}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">Clothing Category Pricing</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Set different prices and price types (per kg or per piece) for each clothing category. At least one category must have pricing before continuing.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
+                      <div key={key} className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {getClothingCategoryLabel(category)}
+                        </label>
+                        {/* Price Type Selector */}
+                        <select
+                          value={clothingPriceTypes[category] || 'per_piece'}
+                          onChange={(e) => handleClothingPriceTypeUpdate(category, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="per_piece">Per Piece</option>
+                          <option value="per_kg">Per Kilogram</option>
+                        </select>
+                        {/* Price Input */}
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={clothingPrices[category] ?? ''}
+                          onChange={(e) => handleClothingPriceUpdate(category, e.target.value)}
+                          placeholder={`Enter price (${(clothingPriceTypes[category] || 'per_piece') === 'per_kg' ? 'per kg' : 'per piece'})`}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    ))}
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select price type (per kg or per piece) and enter the price for each clothing category you offer.
+                  </p>
                 </div>
-
-                {/* Clothing Category Pricing (for both per_kg and per_piece pricing) */}
-                {(watchedPriceType === 'per_piece' || watchedPriceType === 'per_kg') && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="text-md font-medium text-gray-900 mb-3">Clothing Category Pricing</h4>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Set different prices and price types (per kg or per piece) for different types of clothing items:
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
-                        <div key={key} className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {getClothingCategoryLabel(category)}
-                          </label>
-                          {/* Price Type Selector */}
-                          <select
-                            value={clothingPriceTypes[category] || watchedPriceType || 'per_piece'}
-                            onChange={(e) => handleClothingPriceTypeUpdate(category, e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="per_piece">Per Piece</option>
-                            <option value="per_kg">Per Kilogram</option>
-                          </select>
-                          {/* Price Input */}
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={clothingPrices[category] || ''}
-                            onChange={(e) => handleClothingPriceUpdate(category, e.target.value)}
-                            placeholder={`Enter price (${(clothingPriceTypes[category] || watchedPriceType || 'per_piece') === 'per_kg' ? 'per kg' : 'per piece'})`}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Select price type (per kg or per piece) and enter the price for each clothing category. All categories must have a price set.
-                    </p>
-                  </div>
-                )}
                 
                 <div className="flex justify-between pt-4 border-t border-gray-200">
                   <Button
@@ -438,6 +383,7 @@ const ServiceFormPage = () => {
                   <Button
                     type="button"
                     onClick={() => setCurrentStep(3)}
+                    disabled={Object.keys(clothingPrices).length === 0}
                     style={{ backgroundColor: '#fe7f2d', color: 'white' }}
                   >
                     Continue to Configuration →
@@ -562,7 +508,7 @@ const ServiceFormPage = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || Object.keys(clothingPrices).length === 0}
                     className="flex items-center space-x-2 shadow-lg"
                     style={{ backgroundColor: '#fe7f2d', color: 'white' }}
                   >

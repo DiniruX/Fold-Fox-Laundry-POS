@@ -17,6 +17,7 @@ import { getServiceReport, exportServiceToExcel } from '../../services/reportSer
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
+import { formatOrderAmount } from '../../services/orderService';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#14B8A6'];
 
@@ -85,9 +86,11 @@ const ServiceReport = () => {
 
   const categoryChartData = Object.values(categoryData);
 
-  const totalRevenue = data.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const totalRevenue = data.reduce((sum, item) => sum + (item.totalRevenue || 0), 0);
   const totalQuantity = data.reduce((sum, item) => sum + item.totalQuantity, 0);
   const totalOrders = data.reduce((sum, item) => sum + item.orderCount, 0);
+
+  const formatCurrency = (amount) => formatOrderAmount(amount ?? 0);
 
   return (
     <div className="space-y-6">
@@ -150,7 +153,7 @@ const ServiceReport = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
               <span className="text-green-600 text-xl">💰</span>
@@ -203,9 +206,9 @@ const ServiceReport = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={120} />
-                  <Tooltip />
+                  <Tooltip formatter={(value, name) => [formatCurrency(value), name]} />
                   <Legend />
-                  <Bar dataKey="revenue" fill="#10B981" name="Revenue ($)">
+                  <Bar dataKey="revenue" fill="#10B981" name="Revenue (LKR)">
                     {revenueChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -233,7 +236,7 @@ const ServiceReport = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -249,7 +252,7 @@ const ServiceReport = () => {
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div>
                       <p className="text-xs text-gray-500">Revenue</p>
-                      <p className="text-lg font-bold text-green-600">${item.totalRevenue.toFixed(2)}</p>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(item.totalRevenue)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Quantity</p>
@@ -309,13 +312,13 @@ const ServiceReport = () => {
                         {item.totalQuantity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.totalRevenue.toFixed(2)}
+                        {formatCurrency(item.totalRevenue)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.orderCount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${(item.totalRevenue / item.orderCount).toFixed(2)}
+                        {formatCurrency(item.orderCount > 0 ? item.totalRevenue / item.orderCount : 0)}
                       </td>
                     </tr>
                   ))}

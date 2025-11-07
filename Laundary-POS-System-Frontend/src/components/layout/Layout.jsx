@@ -109,7 +109,7 @@ const Layout = () => {
                     />
                     <div>
                       <p className="text-sm font-bold text-[#233d4d]">
-                        Fox Fold POS System
+                        Fold Fox POS System
                       </p>
                       <p className="text-xs text-gray-500">
                         Professional Management Suite
@@ -120,7 +120,7 @@ const Layout = () => {
                   {/* Footer right - Copyright and links */}
                   <div className="text-center md:text-right">
                     <p className="text-sm text-gray-600">
-                      © {new Date().getFullYear()} Fox Fold. All rights reserved.
+                      © {new Date().getFullYear()} Fold Fox. All rights reserved.
                     </p>
                     <div className="flex items-center justify-center md:justify-end gap-4 mt-2">
                       <a href="#" className="text-xs text-gray-500 hover:text-[#fe7f2d] transition-colors">

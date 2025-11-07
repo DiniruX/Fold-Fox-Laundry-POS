@@ -16,6 +16,7 @@ import { getRevenueReport, exportRevenueToExcel } from '../../services/reportSer
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
+import { formatOrderAmount } from '../../services/orderService';
 
 const RevenueReport = () => {
   const [loading, setLoading] = useState(false);
@@ -84,9 +85,11 @@ const RevenueReport = () => {
     avgOrder: item.averageOrderValue,
   }));
 
-  const totalRevenue = data.reduce((sum, item) => sum + item.totalRevenue, 0);
+  const totalRevenue = data.reduce((sum, item) => sum + (item.totalRevenue || 0), 0);
   const totalOrders = data.reduce((sum, item) => sum + item.orderCount, 0);
   const overallAvg = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  const formatCurrency = (amount) => formatOrderAmount(amount ?? 0);
 
   return (
     <div className="space-y-6">
@@ -163,7 +166,7 @@ const RevenueReport = () => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-500">Total Revenue</p>
-              <p className="text-3xl font-bold text-green-600">${totalRevenue.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-green-600">{formatCurrency(totalRevenue)}</p>
               <p className="text-xs text-gray-500 mt-1">All transactions</p>
             </div>
           </div>
@@ -189,7 +192,7 @@ const RevenueReport = () => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-500">Avg Order Value</p>
-              <p className="text-3xl font-bold text-purple-600">${overallAvg.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-purple-600">{formatCurrency(overallAvg)}</p>
               <p className="text-xs text-gray-500 mt-1">Per transaction</p>
             </div>
           </div>
@@ -227,10 +230,11 @@ const RevenueReport = () => {
                       border: '1px solid #e5e7eb', 
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }} 
+                    }}
+                    formatter={(value, name) => [formatCurrency(value), name]}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={3} name="Revenue ($)" dot={{ fill: '#10B981', r: 4 }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={3} name="Revenue (LKR)" dot={{ fill: '#10B981', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -254,7 +258,8 @@ const RevenueReport = () => {
                       border: '1px solid #e5e7eb', 
                       borderRadius: '8px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }} 
+                    }}
+                    formatter={(value, name) => name === 'Orders' ? [value, name] : [formatCurrency(value), name]}
                   />
                   <Legend />
                   <Bar dataKey="orders" fill="#3B82F6" name="Orders" radius={[8, 8, 0, 0]} />
@@ -298,13 +303,13 @@ const RevenueReport = () => {
                         {formatPeriod(item)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.totalRevenue.toFixed(2)}
+                        {formatCurrency(item.totalRevenue)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.orderCount}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.averageOrderValue.toFixed(2)}
+                        {formatCurrency(item.averageOrderValue)}
                       </td>
                     </tr>
                   ))}

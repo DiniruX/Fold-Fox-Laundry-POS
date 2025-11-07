@@ -14,6 +14,7 @@ import { getCustomerReport, exportCustomerToExcel } from '../../services/reportS
 import LoadingSpinner from '../ui/LoadingSpinner';
 import Button from '../ui/Button';
 import toast from 'react-hot-toast';
+import { formatOrderAmount } from '../../services/orderService';
 
 const CustomerReport = () => {
   const [loading, setLoading] = useState(false);
@@ -72,8 +73,10 @@ const CustomerReport = () => {
   }));
 
   const totalCustomers = data.length;
-  const totalSpent = data.reduce((sum, item) => sum + item.totalSpent, 0);
+  const totalSpent = data.reduce((sum, item) => sum + (item.totalSpent || 0), 0);
   const totalOrders = data.reduce((sum, item) => sum + item.totalOrders, 0);
+
+  const formatCurrency = (amount) => formatOrderAmount(amount ?? 0);
 
   return (
     <div className="space-y-6">
@@ -160,7 +163,7 @@ const CustomerReport = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">${totalSpent.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSpent)}</p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
               <span className="text-green-600 text-xl">💰</span>
@@ -201,9 +204,9 @@ const CustomerReport = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
+                  <Tooltip formatter={(value, name) => [name === 'Total Orders' ? value : formatCurrency(value), name]} />
                   <Legend />
-                  <Bar dataKey="spent" fill="#10B981" name="Total Spent ($)" />
+                  <Bar dataKey="spent" fill="#10B981" name="Total Spent (LKR)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -269,10 +272,10 @@ const CustomerReport = () => {
                         {item.totalOrders}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.totalSpent.toFixed(2)}
+                        {formatCurrency(item.totalSpent)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.averageOrderValue.toFixed(2)}
+                        {formatCurrency(item.averageOrderValue)}
                       </td>
                     </tr>
                   ))}

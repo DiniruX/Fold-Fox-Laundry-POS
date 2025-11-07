@@ -357,8 +357,9 @@ const CustomerDetailsPage = () => {
                               {formatCurrency(order.totalAmount)}
                             </p>
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              order.status === 'complete' ? 'bg-green-100 text-green-800' :
+                              order.status === 'deliver' ? 'bg-teal-100 text-teal-800' :
+                              order.status === 'packing' ? 'bg-amber-100 text-amber-800' :
                               'bg-yellow-100 text-yellow-800'
                             }`}>
                               {capitalize(order.status.replace('_', ' '))}

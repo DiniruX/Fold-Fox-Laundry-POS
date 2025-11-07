@@ -121,9 +121,9 @@ const orderSchema = new mongoose.Schema({
       'ironing',          // Based on service statuses
       'dry_cleaning',     // Based on service statuses
       'folding',          // Based on service statuses
-      'complete',         // All services completed
+      'packing',          // Items packed and ready
       'deliver',          // If delivery required - ready for delivery
-      'cancelled'         // Order cancelled
+      'complete'          // Order completed
     ],
     default: 'pickup'
   },

@@ -28,8 +28,6 @@ const BulkOperations = ({
   const [selectedAction, setSelectedAction] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [updateData, setUpdateData] = useState({
-    priceType: '',
-    basePrice: '',
     estimatedTime: '',
     isActive: null,
   });
@@ -212,37 +210,6 @@ const BulkOperations = ({
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Update Fields</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price Type
-                  </label>
-                  <select
-                    value={updateData.priceType}
-                    onChange={(e) => handleInputChange('priceType', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Keep existing</option>
-                    <option value="per_kg">Per Kilogram</option>
-                    <option value="per_item">Per Item</option>
-                    <option value="flat_rate">Flat Rate</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Base Price
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={updateData.basePrice}
-                    onChange={(e) => handleInputChange('basePrice', e.target.value)}
-                    placeholder="Enter new base price"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Estimated Time (minutes)

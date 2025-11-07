@@ -122,11 +122,14 @@ const createService = async (req, res) => {
     // Determine legacy priceType (use first category's priceType or provided one)
     const legacyPriceType = priceType || Object.values(validatedClothingPriceTypes)[0] || 'per_piece';
 
+    const priceValues = Object.values(validatedClothingPrices);
+    const basePriceValue = priceValues.length > 0 ? Math.min(...priceValues) : 0;
+
     const service = await Service.create({
       name,
       description,
       priceType: legacyPriceType, // Legacy field for backward compatibility
-      basePrice: 0, // Base price is not used, all pricing is category-based
+      basePrice: basePriceValue,
       statuses: statuses || ['wash', 'dry'],
       clothingPrices: validatedClothingPrices,
       clothingPriceTypes: validatedClothingPriceTypes,
@@ -374,6 +377,11 @@ const updateService = async (req, res) => {
         validatedClothingPrices[category] = parsedPrice;
       }
       updateData.clothingPrices = validatedClothingPrices;
+
+      const priceValues = Object.values(validatedClothingPrices);
+      if (priceValues.length > 0) {
+        updateData.basePrice = Math.min(...priceValues);
+      }
     }
 
     if (clothingPriceTypes !== undefined) {
@@ -896,13 +904,24 @@ const duplicateService = async (req, res) => {
       });
     }
     
+    let duplicatedPrices = originalService.clothingPrices;
+    if (duplicatedPrices instanceof Map) {
+      duplicatedPrices = Object.fromEntries(duplicatedPrices);
+    }
+
+    let duplicatedPriceTypes = originalService.clothingPriceTypes;
+    if (duplicatedPriceTypes instanceof Map) {
+      duplicatedPriceTypes = Object.fromEntries(duplicatedPriceTypes);
+    }
+
     const newService = await Service.create({
       name: newName,
       description: originalService.description,
       priceType: originalService.priceType,
       basePrice: originalService.basePrice,
       statuses: originalService.statuses,
-      clothingPrices: originalService.clothingPrices,
+      clothingPrices: duplicatedPrices,
+      clothingPriceTypes: duplicatedPriceTypes,
       category: originalService.category,
       estimatedTime: originalService.estimatedTime,
       icon: originalService.icon,

@@ -155,9 +155,9 @@ export const getOrderStatusLabel = (status) => {
     ironing: 'Ironing',
     dry_cleaning: 'Dry Cleaning',
     folding: 'Folding',
-    complete: 'Services Complete',
+    packing: 'Packing',
     deliver: 'Ready for Delivery',
-    cancelled: 'Cancelled',
+    complete: 'Order Complete',
   };
   return statusLabels[status] || status;
 };
@@ -171,9 +171,9 @@ export const getOrderStatusColor = (status) => {
     ironing: 'bg-purple-100 text-purple-800',
     dry_cleaning: 'bg-pink-100 text-pink-800',
     folding: 'bg-green-100 text-green-800',
-    complete: 'bg-emerald-100 text-emerald-800',
+    packing: 'bg-amber-100 text-amber-800',
     deliver: 'bg-teal-100 text-teal-800',
-    cancelled: 'bg-red-100 text-red-800',
+    complete: 'bg-emerald-100 text-emerald-800',
   };
   return statusColors[status] || 'bg-gray-100 text-gray-800';
 };
@@ -264,20 +264,16 @@ export const formatOrderAmount = (amount) => {
 
 export const calculateOrderProgress = (status) => {
   const statusProgress = {
-    pending: 5,
-    confirmed: 15,
-    washing: 25,
-    drying: 35,
-    ironing: 45,
-    dry_cleaning: 55,
-    folding: 65,
-    quality_check: 75,
-    ready_for_pickup: 85,
-    out_for_delivery: 90,
-    delivered: 95,
-    completed: 100,
-    cancelled: 0,
-    on_hold: 0,
+    pickup: 10,
+    received: 20,
+    washing: 35,
+    drying: 45,
+    ironing: 55,
+    dry_cleaning: 65,
+    folding: 75,
+    packing: 85,
+    deliver: 90,
+    complete: 100,
   };
   return statusProgress[status] || 0;
 };
@@ -294,7 +290,7 @@ export const getOrderTimeline = (order) => {
     });
   }
 
-  if (order.status !== 'pending' && order.status !== 'cancelled') {
+  if (order.status && order.status !== 'pickup') {
     timeline.push({
       status: 'Confirmed',
       date: order.createdAt, // This would be updated when status changes
@@ -304,7 +300,7 @@ export const getOrderTimeline = (order) => {
   }
 
   // Add more timeline items based on status
-  if (['washing', 'drying', 'ironing', 'dry_cleaning', 'folding', 'quality_check', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'completed'].includes(order.status)) {
+  if (['washing', 'drying', 'ironing', 'dry_cleaning', 'folding', 'packing', 'deliver', 'complete'].includes(order.status)) {
     timeline.push({
       status: getOrderStatusLabel(order.status),
       date: new Date(), // This would be the actual status change date

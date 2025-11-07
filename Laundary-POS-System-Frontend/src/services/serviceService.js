@@ -191,6 +191,9 @@ export const formatPrice = (price, priceType, clothingCategory = null) => {
     }
     return `LKR ${price}/piece`;
   }
+  if (priceType === 'mixed') {
+    return `LKR ${price}`;
+  }
   return `LKR ${price}`;
 };
 
@@ -198,8 +201,58 @@ export const getPriceTypeLabel = (priceType) => {
   const labels = {
     per_kg: 'Per Kilogram',
     per_piece: 'Per Piece',
+    mixed: 'Mixed Pricing',
   };
   return labels[priceType] || priceType;
+};
+
+export const getServicePriceTypeSummary = (service) => {
+  if (!service) return 'per_piece';
+
+  let priceTypesObj = service.clothingPriceTypes;
+  if (priceTypesObj instanceof Map) {
+    priceTypesObj = Object.fromEntries(priceTypesObj);
+  }
+
+  const priceTypes = Object.values(priceTypesObj || {});
+  if (priceTypes.length === 0) {
+    return service.priceType || 'per_piece';
+  }
+
+  const unique = new Set(priceTypes);
+  if (unique.size === 1) {
+    return priceTypes[0];
+  }
+
+  return 'mixed';
+};
+
+const normalizeClothingPrices = (service) => {
+  if (!service) return {};
+  let pricesObj = service.clothingPrices;
+  if (pricesObj instanceof Map) {
+    pricesObj = Object.fromEntries(pricesObj);
+  }
+  return pricesObj || {};
+};
+
+export const getServiceMinPrice = (service) => {
+  const pricesObj = normalizeClothingPrices(service);
+  const values = Object.values(pricesObj);
+  if (!values.length) return 0;
+  return Math.min(...values);
+};
+
+export const getServiceMaxPrice = (service) => {
+  const pricesObj = normalizeClothingPrices(service);
+  const values = Object.values(pricesObj);
+  if (!values.length) return 0;
+  return Math.max(...values);
+};
+
+export const getServicePricingLabel = (service) => {
+  const summary = getServicePriceTypeSummary(service);
+  return getPriceTypeLabel(summary);
 };
 
 
@@ -270,11 +323,6 @@ export const serviceValidation = {
   description: {
     maxLength: { value: 200, message: 'Description must be less than 200 characters' },
   },
-  basePrice: {
-    required: 'Base price is required',
-    min: { value: 0, message: 'Price must be non-negative' },
-    max: { value: 999999, message: 'Price is too high' },
-  },
   estimatedTime: {
     required: 'Estimated time is required',
     min: { value: 1, message: 'Time must be at least 1 minute' },
@@ -282,9 +330,6 @@ export const serviceValidation = {
   },
   category: {
     required: 'Category is required',
-  },
-  priceType: {
-    required: 'Price type is required',
   },
 };
 
@@ -306,6 +351,10 @@ export default {
   getPriceTypeLabel,
   getStatusLabel,
   getClothingCategoryLabel,
+  getServicePriceTypeSummary,
+  getServiceMinPrice,
+  getServiceMaxPrice,
+  getServicePricingLabel,
   getStatusBadgeColor,
   getStatusColor,
   getClothingCategoryColor,

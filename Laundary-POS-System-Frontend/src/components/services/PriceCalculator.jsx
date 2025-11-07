@@ -6,6 +6,9 @@ import {
   formatPrice,
   getPriceTypeLabel,
   getClothingCategoryLabel,
+  getServiceMinPrice,
+  getServicePricingLabel,
+  getServicePriceTypeSummary,
 } from '../../services/serviceService';
 import { CLOTHING_CATEGORIES } from '../../constants';
 import Button from '../ui/Button';
@@ -95,15 +98,23 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
 
   const handleServiceSelect = (service) => {
     setSelectedService(service);
+    setCalculationData({
+      quantity: 1,
+      weight: 0,
+      clothingCategory: 'normal_clothes',
+    });
     if (onServiceSelect) {
       onServiceSelect(service);
     }
   };
 
   const resetCalculator = () => {
+    const category = calculationData.clothingCategory || 'normal_clothes';
+    const categoryPriceType = getCategoryPriceType(selectedService, category);
     setCalculationData({
-      quantity: 1,
-      weight: selectedService?.priceType === 'per_kg' ? 1 : 0,
+      quantity: categoryPriceType === 'per_piece' ? 1 : 0,
+      weight: categoryPriceType === 'per_kg' ? 1 : 0,
+      clothingCategory: category,
     });
     setCalculationResult(null);
   };
@@ -149,37 +160,43 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {services.map((service) => (
-              <button
-                key={service._id}
-                onClick={() => handleServiceSelect(service)}
-                className={`p-5 rounded-xl border-2 text-left transition-all duration-200 ${
-                  selectedService?._id === service._id
-                    ? 'border-orange-500 bg-orange-50 shadow-lg ring-2 ring-orange-200'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3 mb-2">
-                  <div 
-                    className="h-10 w-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: service.color || '#3B82F6' }}
+              {services.map((service) => {
+                const minPrice = getServiceMinPrice(service);
+                const summaryType = getServicePriceTypeSummary(service);
+                const summaryLabel = getServicePricingLabel(service);
+
+                return (
+                  <button
+                    key={service._id}
+                    onClick={() => handleServiceSelect(service)}
+                    className={`p-5 rounded-xl border-2 text-left transition-all duration-200 ${
+                      selectedService?._id === service._id
+                        ? 'border-orange-500 bg-orange-50 shadow-lg ring-2 ring-orange-200'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
                   >
-                    <span className="text-white text-lg">
-                      {service.icon || service.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 truncate">{service.name}</div>
-                  </div>
-                </div>
-                <div className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
-                  {formatPrice(service.basePrice, service.priceType)}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {getPriceTypeLabel(service.priceType)}
-                </div>
-              </button>
-              ))}
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div 
+                        className="h-10 w-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: service.color || '#3B82F6' }}
+                      >
+                        <span className="text-white text-lg">
+                          {service.icon || service.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">{service.name}</div>
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold" style={{ color: '#fe7f2d' }}>
+                      {formatPrice(minPrice, summaryType)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {summaryLabel}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -189,28 +206,40 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Step 2: Enter Quantity/Weight</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-xl border-2 border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Clothing Category
+                </label>
+                <select
+                  value={calculationData.clothingCategory}
+                  onChange={(e) => setCalculationData(prev => ({ ...prev, clothingCategory: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
+                    <option key={key} value={category}>
+                      {getClothingCategoryLabel(category)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {(() => {
                 const categoryPriceType = getCategoryPriceType(selectedService, calculationData.clothingCategory || 'normal_clothes');
-                return categoryPriceType === 'per_kg';
-              })() && (
-                <div>
-                  <Input
-                    label="Weight (kg)"
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={calculationData.weight}
-                    onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
-                    placeholder="Enter weight in kg"
-                  />
-                </div>
-              )}
-              
-              {(() => {
-                const categoryPriceType = getCategoryPriceType(selectedService, calculationData.clothingCategory || 'normal_clothes');
-                return categoryPriceType === 'per_piece';
-              })() && (
-                <>
+                if (categoryPriceType === 'per_kg') {
+                  return (
+                    <div>
+                      <Input
+                        label="Weight (kg)"
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={calculationData.weight}
+                        onChange={(e) => handleInputChange('weight', parseFloat(e.target.value) || 0)}
+                        placeholder="Enter weight in kg"
+                      />
+                    </div>
+                  );
+                }
+                return (
                   <div>
                     <Input
                       label="Quantity"
@@ -221,24 +250,8 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
                       placeholder="Enter quantity"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Clothing Category
-                    </label>
-                    <select
-                      value={calculationData.clothingCategory}
-                      onChange={(e) => setCalculationData(prev => ({ ...prev, clothingCategory: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
-                        <option key={key} value={category}>
-                          {getClothingCategoryLabel(category)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
+                );
+              })()}
             </div>
 
             <div className="flex justify-between items-center mt-4">
