@@ -8,6 +8,14 @@ const staffSchema = new mongoose.Schema({
     uppercase: true
   },
   personalInfo: {
+    idNumber: {
+      type: String,
+      required: [true, 'ID number is required'],
+      trim: true,
+      uppercase: true,
+      unique: true,
+      sparse: true
+    },
     firstName: {
       type: String,
       required: [true, 'First name is required'],
@@ -132,6 +140,7 @@ staffSchema.index({ 'personalInfo.email': 1 });
 staffSchema.index({ 'personalInfo.phoneNumber': 1 });
 staffSchema.index({ 'employmentInfo.hireDate': 1 });
 staffSchema.index({ 'personalInfo.firstName': 'text', 'personalInfo.lastName': 'text' });
+staffSchema.index({ 'personalInfo.idNumber': 1 }, { unique: true, sparse: true });
 
 // Virtual for full name
 staffSchema.virtual('fullName').get(function() {

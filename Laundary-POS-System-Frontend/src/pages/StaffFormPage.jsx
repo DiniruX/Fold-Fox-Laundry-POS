@@ -32,6 +32,7 @@ const StaffFormPage = () => {
   } = useForm({
     defaultValues: {
       personalInfo: {
+        idNumber: '',
         firstName: '',
         lastName: '',
         dateOfBirth: '',
@@ -75,6 +76,7 @@ const StaffFormPage = () => {
     if (staff) {
       const formData = {
         personalInfo: {
+          idNumber: staff.personalInfo?.idNumber || '',
           firstName: staff.personalInfo?.firstName || '',
           lastName: staff.personalInfo?.lastName || '',
           dateOfBirth: staff.personalInfo?.dateOfBirth ? new Date(staff.personalInfo.dateOfBirth).toISOString().split('T')[0] : '',
@@ -268,6 +270,23 @@ const StaffFormPage = () => {
                         error={errors.personalInfo?.lastName?.message}
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ID Number *
+                    </label>
+                    <Input
+                      {...register('personalInfo.idNumber', {
+                        required: 'ID number is required',
+                        pattern: {
+                          value: /^[A-Za-z0-9\-/]{5,20}$/,
+                          message: 'ID number must be 5-20 characters (letters, numbers, slash or hyphen)'
+                        }
+                      })}
+                      onBlur={(e) => setValue('personalInfo.idNumber', e.target.value.toUpperCase().trim())}
+                      error={errors.personalInfo?.idNumber?.message}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

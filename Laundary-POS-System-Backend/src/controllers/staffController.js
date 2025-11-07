@@ -20,6 +20,23 @@ const createStaff = async (req, res) => {
       employmentInfo
     } = req.body;
 
+    if (!personalInfo?.idNumber || personalInfo.idNumber.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'ID number is required',
+        field: 'idNumber'
+      });
+    }
+
+    // Normalize key personal info fields
+    personalInfo.idNumber = personalInfo.idNumber.trim().toUpperCase();
+    if (personalInfo.email) {
+      personalInfo.email = personalInfo.email.trim().toLowerCase();
+    }
+    if (personalInfo.phoneNumber) {
+      personalInfo.phoneNumber = personalInfo.phoneNumber.trim();
+    }
+
     // Enhanced validation
     const { validateStaffCreate, formatValidationErrors } = require('../utils/validators');
     const validation = validateStaffCreate({ personalInfo, employmentInfo });
@@ -58,6 +75,18 @@ const createStaff = async (req, res) => {
       });
     }
 
+    // Check if ID number already exists
+    const existingIdNumber = await Staff.findOne({
+      'personalInfo.idNumber': personalInfo.idNumber
+    });
+    if (existingIdNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Staff member with this ID number already exists',
+        field: 'idNumber'
+      });
+    }
+
     // Set default values
     const staffData = {
       personalInfo,
@@ -88,9 +117,18 @@ const createStaff = async (req, res) => {
     console.error('Error stack:', error.stack);
     
     if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      let message = 'Duplicate field value. Email or employee ID already exists.';
+      if (duplicateField === 'personalInfo.email') {
+        message = 'Staff member with this email already exists.';
+      } else if (duplicateField === 'personalInfo.phoneNumber') {
+        message = 'Staff member with this phone number already exists.';
+      } else if (duplicateField === 'personalInfo.idNumber') {
+        message = 'Staff member with this ID number already exists.';
+      }
       return res.status(400).json({
         success: false,
-        message: 'Duplicate field value. Email or employee ID already exists.'
+        message
       });
     }
     
@@ -133,6 +171,7 @@ const getAllStaff = async (req, res) => {
     if (search) {
       query.$or = [
         { employeeId: { $regex: search, $options: 'i' } },
+        { 'personalInfo.idNumber': { $regex: search, $options: 'i' } },
         { 'personalInfo.firstName': { $regex: search, $options: 'i' } },
         { 'personalInfo.lastName': { $regex: search, $options: 'i' } },
         { 'personalInfo.email': { $regex: search, $options: 'i' } },
@@ -231,6 +270,57 @@ const updateStaff = async (req, res) => {
     delete updateData.createdBy;
     delete updateData.createdAt;
 
+    // Normalize and validate personal info updates
+    if (updateData.personalInfo) {
+      if (updateData.personalInfo.idNumber) {
+        updateData.personalInfo.idNumber = updateData.personalInfo.idNumber.trim().toUpperCase();
+        const existingId = await Staff.findOne({
+          'personalInfo.idNumber': updateData.personalInfo.idNumber,
+          _id: { $ne: id }
+        });
+        if (existingId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Staff member with this ID number already exists',
+            field: 'idNumber'
+          });
+        }
+      }
+      if (updateData.personalInfo.email !== undefined) {
+        const emailTrimmed = updateData.personalInfo.email?.trim();
+        if (!emailTrimmed) {
+          delete updateData.personalInfo.email;
+        } else {
+          updateData.personalInfo.email = emailTrimmed.toLowerCase();
+          const existingEmail = await Staff.findOne({
+            'personalInfo.email': updateData.personalInfo.email,
+            _id: { $ne: id }
+          });
+          if (existingEmail) {
+            return res.status(400).json({
+              success: false,
+              message: 'Staff member with this email already exists',
+              field: 'email'
+            });
+          }
+        }
+      }
+      if (updateData.personalInfo.phoneNumber) {
+        updateData.personalInfo.phoneNumber = updateData.personalInfo.phoneNumber.trim();
+        const existingPhone = await Staff.findOne({
+          'personalInfo.phoneNumber': updateData.personalInfo.phoneNumber,
+          _id: { $ne: id }
+        });
+        if (existingPhone) {
+          return res.status(400).json({
+            success: false,
+            message: 'Staff member with this phone number already exists',
+            field: 'phoneNumber'
+          });
+        }
+      }
+    }
+
     // Add updatedBy field
     updateData.updatedBy = req.user._id;
 
@@ -257,9 +347,18 @@ const updateStaff = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      let message = 'Duplicate field value. Email already exists.';
+      if (duplicateField === 'personalInfo.email') {
+        message = 'Staff member with this email already exists.';
+      } else if (duplicateField === 'personalInfo.phoneNumber') {
+        message = 'Staff member with this phone number already exists.';
+      } else if (duplicateField === 'personalInfo.idNumber') {
+        message = 'Staff member with this ID number already exists.';
+      }
       return res.status(400).json({
         success: false,
-        message: 'Duplicate field value. Email already exists.'
+        message
       });
     }
     

@@ -52,6 +52,7 @@ const StaffList = ({ staff, onStaffSelect, onEditStaff, selectedStaff, onRefresh
     if (searchTerm) {
       filtered = filtered.filter(staffMember => 
         staffMember.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        staffMember.personalInfo?.idNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         staffMember.personalInfo?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         staffMember.personalInfo?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         staffMember.personalInfo?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -238,7 +239,8 @@ const StaffList = ({ staff, onStaffSelect, onEditStaff, selectedStaff, onRefresh
                       <h3 className="text-lg font-semibold text-gray-900 truncate">
                         {staffMember.personalInfo?.firstName} {staffMember.personalInfo?.lastName}
                       </h3>
-                      <p className="text-xs text-gray-500">ID: {staffMember.employeeId}</p>
+                      <p className="text-xs text-gray-500">Employee ID: {staffMember.employeeId}</p>
+                      <p className="text-xs text-gray-500">ID Number: {staffMember.personalInfo?.idNumber || 'N/A'}</p>
                     </div>
                   </div>
 
@@ -324,7 +326,7 @@ const StaffList = ({ staff, onStaffSelect, onEditStaff, selectedStaff, onRefresh
                           </p>
                         </div>
                         <div className="mt-1 flex items-center space-x-4 text-sm text-gray-600">
-                          <span className="font-medium">ID: {staffMember.employeeId}</span>
+                          <span className="font-medium">Employee ID: {staffMember.employeeId}</span>
                           <span>•</span>
                           <span>{staffMember.employmentInfo?.position}</span>
                           <span>•</span>
@@ -333,6 +335,8 @@ const StaffList = ({ staff, onStaffSelect, onEditStaff, selectedStaff, onRefresh
                           </span>
                         </div>
                         <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+                          <span>ID Number: {staffMember.personalInfo?.idNumber || 'N/A'}</span>
+                          <span>•</span>
                           <span className="flex items-center">
                             <PhoneIcon className="h-3.5 w-3.5 mr-1" />
                             {staffMember.personalInfo?.phoneNumber}

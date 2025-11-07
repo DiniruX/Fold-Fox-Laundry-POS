@@ -207,6 +207,11 @@ class StaffService {
     if (!staffData.personalInfo?.lastName?.trim()) {
       errors.lastName = 'Last name is required';
     }
+    if (!staffData.personalInfo?.idNumber?.trim()) {
+      errors.idNumber = 'ID number is required';
+    } else if (!/^[A-Za-z0-9\-/]{5,20}$/.test(staffData.personalInfo.idNumber.trim())) {
+      errors.idNumber = 'Please enter a valid ID number';
+    }
     if (!staffData.personalInfo?.dateOfBirth) {
       errors.dateOfBirth = 'Date of birth is required';
     }
@@ -300,6 +305,11 @@ class StaffService {
             formatted.personalInfo.address[key] = formatted.personalInfo.address[key].trim();
           }
         });
+      }
+
+      // Normalize ID number
+      if (typeof formatted.personalInfo.idNumber === 'string') {
+        formatted.personalInfo.idNumber = formatted.personalInfo.idNumber.trim().toUpperCase();
       }
 
       // Format emergency contact

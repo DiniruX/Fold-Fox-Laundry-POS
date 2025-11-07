@@ -84,6 +84,13 @@ const validateStaffCreate = (data) => {
     errors.push({ field: 'lastName', message: 'Last name can only contain letters' });
   }
   
+  // ID Number
+  if (!personalInfo.idNumber || personalInfo.idNumber.trim() === '') {
+    errors.push({ field: 'idNumber', message: 'ID number is required' });
+  } else if (!/^[A-Za-z0-9\-/]{5,20}$/.test(personalInfo.idNumber.trim())) {
+    errors.push({ field: 'idNumber', message: 'ID number must be 5-20 characters (letters, numbers, slash or hyphen)' });
+  }
+  
   // Date of birth
   if (!personalInfo.dateOfBirth) {
     errors.push({ field: 'dateOfBirth', message: 'Date of birth is required' });
