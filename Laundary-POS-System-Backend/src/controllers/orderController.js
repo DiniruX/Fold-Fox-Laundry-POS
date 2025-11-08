@@ -1242,7 +1242,15 @@ const confirmOrderItems = async (req, res) => {
     // Include express service fee and extra charges in total
     const expressServiceFee = order.expressServiceFee || 0;
     const extraChargesTotal = order.extraCharges?.total || 0;
-    const totalAmount = subtotal + taxAmount + expressServiceFee + extraChargesTotal - discountAmount;
+    const pickupCharges = Number(order.pickupCharges) || 0;
+    const deliveryCharges = Number(order.deliveryCharges) || 0;
+    const totalAmount = subtotal 
+      + taxAmount 
+      + expressServiceFee 
+      + extraChargesTotal 
+      + pickupCharges 
+      + deliveryCharges 
+      - discountAmount;
     const balanceAmount = totalAmount - (order.paidAmount || 0);
 
     const originalTotal = order.totalAmount;
@@ -1252,7 +1260,11 @@ const confirmOrderItems = async (req, res) => {
       originalTotal,
       newTotal: totalAmount,
       difference,
-      itemCount: confirmedItems.length
+      itemCount: confirmedItems.length,
+      pickupCharges,
+      deliveryCharges,
+      expressServiceFee,
+      extraChargesTotal
     });
 
     // Save confirmation history for audit trail

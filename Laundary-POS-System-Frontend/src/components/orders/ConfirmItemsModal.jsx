@@ -98,8 +98,15 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
     // Include express service fee and extra charges
     const expressServiceFee = order.expressServiceFee || 0;
     const extraChargesTotal = order.extraCharges?.total || 0;
+    const pickupCharges = Number(order.pickupCharges) || 0;
+    const deliveryCharges = Number(order.deliveryCharges) || 0;
     
-    const actualTotal = actualSubtotal - actualDiscount + expressServiceFee + extraChargesTotal;
+    const actualTotal = actualSubtotal 
+      - actualDiscount 
+      + expressServiceFee 
+      + extraChargesTotal 
+      + pickupCharges 
+      + deliveryCharges;
     const estimatedTotal = order.totalAmount;
     const difference = actualTotal - estimatedTotal;
 
@@ -109,6 +116,8 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
       actualDiscount,
       expressServiceFee,
       extraChargesTotal,
+      pickupCharges,
+      deliveryCharges,
       actualTotal,
       estimatedTotal,
       difference,
@@ -286,10 +295,22 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
         </div>
 
         {/* Additional Charges Summary */}
-        {(totals.expressServiceFee > 0 || totals.extraChargesTotal > 0 || totals.actualDiscount > 0) && (
+        {(totals.expressServiceFee > 0 || totals.extraChargesTotal > 0 || totals.actualDiscount > 0 || totals.pickupCharges > 0 || totals.deliveryCharges > 0) && (
           <div className="rounded-xl p-4 border-2 border-blue-200 bg-blue-50">
             <h4 className="text-sm font-bold text-blue-900 mb-3">Additional Charges & Discounts</h4>
             <div className="space-y-2 text-sm">
+              {totals.pickupCharges > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-700">📦 Pickup Charges:</span>
+                  <span className="font-semibold text-blue-900">+{formatOrderAmount(totals.pickupCharges)}</span>
+                </div>
+              )}
+              {totals.deliveryCharges > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-green-700">🚚 Delivery Charges:</span>
+                  <span className="font-semibold text-green-900">+{formatOrderAmount(totals.deliveryCharges)}</span>
+                </div>
+              )}
               {totals.expressServiceFee > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-blue-700">⚡ Express Service (1 Day):</span>
