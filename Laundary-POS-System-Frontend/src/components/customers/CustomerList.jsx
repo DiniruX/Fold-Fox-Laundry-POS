@@ -25,9 +25,13 @@ import Modal from '../ui/Modal';
 import { customerService } from '../../services/customerService';
 import { formatCurrency, formatDate, getInitials, capitalize } from '../../utils/helpers';
 
+const MIN_SEARCH_LENGTH = 2;
+
 const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSelectedCustomer }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchHint, setSearchHint] = useState('');
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
   const [filters, setFilters] = useState({
     isStudent: '',
@@ -91,9 +95,35 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
   const totalPages = customersData?.totalPages || 1;
   const totalCustomers = customersData?.totalCustomers || 0;
 
-  const handleSearch = (value) => {
-    setSearchTerm(value);
+  const applySearch = () => {
+    const trimmed = searchInput.trim();
+
+    if (trimmed.length === 0) {
+      setSearchHint('');
+      setSearchTerm('');
+      setPagination({ ...pagination, page: 1 });
+      return;
+    }
+
+    if (trimmed.length < MIN_SEARCH_LENGTH) {
+      setSearchHint(`Type at least ${MIN_SEARCH_LENGTH} characters to search`);
+      return;
+    }
+
+    setSearchHint('');
+    setSearchTerm(trimmed);
     setPagination({ ...pagination, page: 1 });
+  };
+
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applySearch();
+    }
   };
 
   const handlePhoneLookup = async (phoneNumber) => {
@@ -224,12 +254,28 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
             <label className="block text-xs font-medium text-gray-700 mb-2">
               Quick Search
             </label>
-            <Input
-              placeholder="Search by name, email, or phone..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
-            />
+            <div className="relative">
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onKeyDown={handleSearchKeyDown}
+                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
+                className="pr-24"
+              />
+              <button
+                type="button"
+                onClick={applySearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-sm font-medium text-white rounded-lg"
+                style={{ backgroundColor: '#fe7f2d' }}
+                disabled={isLoading}
+              >
+                Search
+              </button>
+            </div>
+            {searchHint && (
+              <p className="mt-2 text-xs text-red-600">{searchHint}</p>
+            )}
           </div>
 
           {/* Student Filter */}

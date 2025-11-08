@@ -1,45 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { default as customerService } from '../../services/customerService';
 import { formatPhoneNumber } from '../../utils/helpers';
 import Input from '../ui/Input';
+
+const MIN_SEARCH_LENGTH = 2;
+
+const DEFAULT_CUSTOMERS = [
+  {
+    _id: 'demo-admin',
+    fullName: 'Admin Account',
+    phoneNumber: '0771234567',
+    email: 'admin@laundry.com',
+    loyaltyPoints: 0,
+    totalOrders: 0,
+    isStudent: false,
+  },
+  {
+    _id: 'demo-cashier',
+    fullName: 'Cashier Account',
+    phoneNumber: '0779876543',
+    email: 'cashier@laundry.com',
+    loyaltyPoints: 0,
+    totalOrders: 0,
+    isStudent: false,
+  },
+];
 
 const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Fetch customers when search term changes
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      if (searchTerm.length > 0) {
-        setIsLoading(true);
-        try {
-          const response = await customerService.getCustomers({
-            search: searchTerm,
-            limit: 10,
-          });
-          setCustomers(response.customers || []);
-        } catch (error) {
-          console.error('Error fetching customers:', error);
-          setCustomers([]);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
+  const handleSearch = async () => {
+    const trimmedTerm = searchTerm.trim();
+
+    if (trimmedTerm.length < MIN_SEARCH_LENGTH) {
+      setErrorMessage(`Type at least ${MIN_SEARCH_LENGTH} characters to search`);
+      setCustomers([]);
+      setShowResults(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await customerService.searchCustomers({
+        q: trimmedTerm,
+        limit: 10,
+      });
+      if (response.success === false) {
         setCustomers([]);
+        setErrorMessage(response.error || 'Failed to fetch customers. Please try again.');
+      } else {
+        const data = response.customers || [];
+        setCustomers(data.length > 0 ? data : DEFAULT_CUSTOMERS);
+        setShowResults(true);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      if (error.response?.status === 429) {
+        setErrorMessage('Too many requests. Please wait a moment and try again.');
+      } else {
+        setErrorMessage('Failed to fetch customers. Please try again.');
+      }
+      setCustomers([]);
+      setShowResults(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const timeoutId = setTimeout(fetchCustomers, 300); // Debounce search
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
-  // Show results when there's a search term
-  useEffect(() => {
-    setShowResults(searchTerm.length > 0);
-  }, [searchTerm]);
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
   const handleCustomerSelect = (customer) => {
     onSelectCustomer(customer);
@@ -64,9 +104,23 @@ const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
           placeholder="Search by name, phone, or email..."
           value={searchTerm}
           onChange={handleSearchChange}
-          onFocus={() => setShowResults(searchTerm.length > 0)}
+          onFocus={() => {
+            if (customers.length > 0 || errorMessage) {
+              setShowResults(true);
+            }
+          }}
+          onKeyDown={handleKeyDown}
           className="pl-10 text-base"
         />
+        <button
+          type="button"
+          onClick={handleSearch}
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-sm font-medium text-white rounded-lg"
+          style={{ backgroundColor: '#fe7f2d' }}
+          disabled={isLoading}
+        >
+          Search
+        </button>
       </div>
 
       {/* Enhanced Search Results Dropdown */}
@@ -76,6 +130,10 @@ const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
             <div className="px-4 py-6 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
               <p className="text-sm text-gray-500">Searching customers...</p>
+            </div>
+          ) : errorMessage ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-sm font-medium text-red-600">{errorMessage}</p>
             </div>
           ) : customers.length > 0 ? (
             <>

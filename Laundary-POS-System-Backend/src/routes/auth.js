@@ -18,9 +18,16 @@ const { validateLogin, validateUser } = require('../middleware/validation');
 // Import rate limiters for security
 const { loginLimiter, strictLimiter } = require('../middleware/rateLimitConfig');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Public routes
 router.post('/register', validateUser, register);
-router.post('/login', loginLimiter, validateLogin, login);
+
+if (isProduction) {
+  router.post('/login', loginLimiter, validateLogin, login);
+} else {
+  router.post('/login', validateLogin, login);
+}
 router.post('/refresh-token', refreshToken);
 router.post('/check-email', checkEmail);
 

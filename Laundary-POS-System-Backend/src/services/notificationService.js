@@ -135,7 +135,46 @@ const sendEmail = async (email, subject, text, html = null) => {
 const sendBankAccountDetails = async ({ email, orderNumber, amount, bankDetails }) => {
   try {
     const businessName = process.env.BUSINESS_NAME;
-    const currency = process.env.CURRENCY;
+    const currency = process.env.CURRENCY || 'LKR';
+    const formatCurrency = (value, options = {}) => {
+      const amount = Number(value || 0);
+      const {
+        minimumFractionDigits = 2,
+        maximumFractionDigits = 2
+      } = options;
+      return `${currency} ${amount.toLocaleString('en-LK', {
+        minimumFractionDigits,
+        maximumFractionDigits
+      })}`;
+    };
+    const formatPlainCurrency = (value) => formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const formatEstimatedTime = (estimatedMinutes) => {
+      const totalMinutes = Number(estimatedMinutes);
+      if (!totalMinutes || totalMinutes <= 0 || Number.isNaN(totalMinutes)) {
+        return 'Soon';
+      }
+
+      if (totalMinutes < 60) {
+        return `${totalMinutes} min${totalMinutes !== 1 ? 's' : ''}`;
+      }
+
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.round(totalMinutes % 60);
+
+      if (hours < 24) {
+        const parts = [`${hours} hr${hours !== 1 ? 's' : ''}`];
+        if (minutes) parts.push(`${minutes} min${minutes !== 1 ? 's' : ''}`);
+        return parts.join(' ');
+      }
+
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      const parts = [`${days} day${days !== 1 ? 's' : ''}`];
+      if (remainingHours) parts.push(`${remainingHours} hr${remainingHours !== 1 ? 's' : ''}`);
+      if (minutes && parts.length < 3) parts.push(`${minutes} min${minutes !== 1 ? 's' : ''}`);
+
+      return parts.join(' ');
+    };
 
     // Email HTML content
     const emailHtml = `
@@ -431,7 +470,7 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
           : `${item.quantity || 0} piece(s)`;
         const priceTypeLabel = categoryPriceType === 'per_kg' ? '/kg' : '/pc';
         const serviceDisplay = formatServiceNameWithCategory(item.serviceName, item.clothingCategory);
-        return `${index + 1}. ${serviceDisplay} - ${qtyOrWeight} @ ${currency} ${parseFloat(item.unitPrice).toLocaleString('en-LK')}${priceTypeLabel} = ${currency} ${parseFloat(item.totalPrice).toLocaleString('en-LK')}`;
+        return `${index + 1}. ${serviceDisplay} - ${qtyOrWeight} @ ${formatPlainCurrency(item.unitPrice)}${priceTypeLabel} = ${formatPlainCurrency(item.totalPrice)}`;
       }).join('\n');
 
       // HTML version
@@ -458,7 +497,7 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
                   <tr>
                     <td style="padding: 10px; border: 1px solid #e5e7eb;">${serviceDisplay}</td>
                     <td style="padding: 10px; text-align: center; border: 1px solid #e5e7eb;">${qtyOrWeight}</td>
-                    <td style="padding: 10px; text-align: right; border: 1px solid #e5e7eb;">${currency} ${parseFloat(item.totalPrice).toLocaleString('en-LK')}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid #e5e7eb;">${formatPlainCurrency(item.totalPrice)}</td>
                   </tr>
                 `;
               }).join('')}
@@ -473,42 +512,88 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
     let summaryHtml = '';
     
     if (orderDetails) {
+      const subtotal = orderDetails.subtotal || totalAmount;
       const discount = orderDetails.discountAmount || 0;
       const tax = orderDetails.taxAmount || 0;
-      const subtotal = orderDetails.subtotal || totalAmount;
+      const expressFee = orderDetails.expressServiceFee || 0;
+      const extraCharges = orderDetails.extraCharges?.total || 0;
+      const pickupCharges = orderDetails.pickupRequired ? Number(orderDetails.pickupCharges) || 0 : 0;
+      const deliveryCharges = orderDetails.deliveryRequired ? Number(orderDetails.deliveryCharges) || 0 : 0;
 
-      if (discount > 0 || tax > 0) {
-        summaryText = `\n\nOrder Summary:\nSubtotal: ${currency} ${parseFloat(subtotal).toLocaleString('en-LK')}`;
-        if (discount > 0) summaryText += `\nDiscount: -${currency} ${parseFloat(discount).toLocaleString('en-LK')}`;
-        if (tax > 0) summaryText += `\nTax: ${currency} ${parseFloat(tax).toLocaleString('en-LK')}`;
-        summaryText += `\nTotal Amount: ${currency} ${parseFloat(totalAmount).toLocaleString('en-LK')}`;
+      const pickupLabel = orderDetails.pickupRequired
+        ? (pickupCharges > 0 ? formatPlainCurrency(pickupCharges) : 'FREE')
+        : null;
+      const deliveryLabel = orderDetails.deliveryRequired
+        ? (deliveryCharges > 0 ? formatPlainCurrency(deliveryCharges) : 'FREE')
+        : null;
 
-        summaryHtml = `
-          <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #2563eb; margin-top: 0;">Order Summary:</h3>
-            <table style="width: 100%;">
-              <tr>
-                <td style="padding: 5px 0;">Subtotal:</td>
-                <td style="text-align: right; padding: 5px 0;">${currency} ${parseFloat(subtotal).toLocaleString('en-LK')}</td>
-              </tr>
-              ${discount > 0 ? `
-              <tr>
-                <td style="padding: 5px 0; color: #059669;">Discount:</td>
-                <td style="text-align: right; padding: 5px 0; color: #059669;">-${currency} ${parseFloat(discount).toLocaleString('en-LK')}</td>
-              </tr>` : ''}
-              ${tax > 0 ? `
-              <tr>
-                <td style="padding: 5px 0;">Tax:</td>
-                <td style="text-align: right; padding: 5px 0;">${currency} ${parseFloat(tax).toLocaleString('en-LK')}</td>
-              </tr>` : ''}
-              <tr style="border-top: 2px solid #2563eb; font-weight: bold; font-size: 18px;">
-                <td style="padding: 10px 0;">Total Amount:</td>
-                <td style="text-align: right; padding: 10px 0; color: #2563eb;">${currency} ${parseFloat(totalAmount).toLocaleString('en-LK')}</td>
-              </tr>
-            </table>
-          </div>
-        `;
+      summaryText = `\n\nOrder Summary:\nSubtotal: ${formatPlainCurrency(subtotal)}`;
+      if (expressFee > 0) {
+        summaryText += `\nExpress Service: +${formatPlainCurrency(expressFee)}`;
       }
+      if (extraCharges > 0) {
+        summaryText += `\nExtra Items: +${formatPlainCurrency(extraCharges)}`;
+      }
+      if (orderDetails.pickupRequired) {
+        summaryText += `\nPickup: ${pickupLabel}`;
+      }
+      if (orderDetails.deliveryRequired) {
+        const distanceLabel = orderDetails.deliveryDistance > 0 ? ` (${orderDetails.deliveryDistance}km)` : '';
+        summaryText += `\nDelivery${distanceLabel}: ${deliveryLabel}`;
+      }
+      if (discount > 0) {
+        summaryText += `\nDiscount: -${formatPlainCurrency(discount)}`;
+      }
+      if (tax > 0) {
+        summaryText += `\nTax: ${formatPlainCurrency(tax)}`;
+      }
+      summaryText += `\nTotal Amount: ${formatPlainCurrency(totalAmount)}`;
+
+      summaryHtml = `
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="color: #2563eb; margin-top: 0;">Order Summary:</h3>
+          <table style="width: 100%;">
+            <tr>
+              <td style="padding: 5px 0;">Subtotal:</td>
+              <td style="text-align: right; padding: 5px 0;">${formatPlainCurrency(subtotal)}</td>
+            </tr>
+            ${expressFee > 0 ? `
+            <tr>
+              <td style="padding: 5px 0;">Express Service (1 Day):</td>
+              <td style="text-align: right; padding: 5px 0;">+${formatPlainCurrency(expressFee)}</td>
+            </tr>` : ''}
+            ${extraCharges > 0 ? `
+            <tr>
+              <td style="padding: 5px 0;">Extra Items:</td>
+              <td style="text-align: right; padding: 5px 0;">+${formatPlainCurrency(extraCharges)}</td>
+            </tr>` : ''}
+            ${orderDetails.pickupRequired ? `
+            <tr>
+              <td style="padding: 5px 0;">Pickup:</td>
+              <td style="text-align: right; padding: 5px 0;">${pickupLabel}</td>
+            </tr>` : ''}
+            ${orderDetails.deliveryRequired ? `
+            <tr>
+              <td style="padding: 5px 0;">Delivery${orderDetails.deliveryDistance > 0 ? ` (${orderDetails.deliveryDistance}km)` : ''}:</td>
+              <td style="text-align: right; padding: 5px 0;">${deliveryLabel}</td>
+            </tr>` : ''}
+            ${discount > 0 ? `
+            <tr>
+              <td style="padding: 5px 0; color: #059669;">Discount:</td>
+              <td style="text-align: right; padding: 5px 0; color: #059669;">-${formatPlainCurrency(discount)}</td>
+            </tr>` : ''}
+            ${tax > 0 ? `
+            <tr>
+              <td style="padding: 5px 0;">Tax:</td>
+              <td style="text-align: right; padding: 5px 0;">${formatPlainCurrency(tax)}</td>
+            </tr>` : ''}
+            <tr style="border-top: 2px solid #2563eb; font-weight: bold; font-size: 18px;">
+              <td style="padding: 10px 0;">Total Amount:</td>
+              <td style="text-align: right; padding: 10px 0; color: #2563eb;">${formatPlainCurrency(totalAmount)}</td>
+            </tr>
+          </table>
+        </div>
+      `;
     }
 
     // Additional info
@@ -525,8 +610,9 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
         additionalInfoHtml += '<p style="color: #2563eb;">✓ Delivery service requested</p>';
       }
       if (orderDetails.estimatedTime) {
-        additionalInfo += `\n\nEstimated completion: ${orderDetails.estimatedTime} hours`;
-        additionalInfoHtml += `<p style="background-color: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0;"><strong>⏱️ Estimated completion:</strong> ${orderDetails.estimatedTime} hours</p>`;
+        const formattedEstimate = formatEstimatedTime(orderDetails.estimatedTime);
+        additionalInfo += `\n\nEstimated completion: ${formattedEstimate}`;
+        additionalInfoHtml += `<p style="background-color: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0;"><strong>⏱️ Estimated completion:</strong> ${formattedEstimate}</p>`;
       }
     }
 
@@ -535,7 +621,7 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
 
 Thank you for your order! Your order has been confirmed and we're processing it now.
 
-Order Number: ${orderNumber}${itemsList}${summaryText || '\n\nTotal Amount: ' + currency + ' ' + parseFloat(totalAmount).toLocaleString('en-LK')}${additionalInfo}
+Order Number: ${orderNumber}${itemsList}${summaryText || `\n\nTotal Amount: ${formatPlainCurrency(totalAmount)}`}${additionalInfo}
 
 We will notify you once your order is ready for pickup/delivery.
 

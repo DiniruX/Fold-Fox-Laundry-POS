@@ -131,6 +131,8 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   
+  skip: () => process.env.NODE_ENV !== 'production',
+  
   skipSuccessfulRequests: true, // Don't count successful logins
   
   keyGenerator: (req) => {

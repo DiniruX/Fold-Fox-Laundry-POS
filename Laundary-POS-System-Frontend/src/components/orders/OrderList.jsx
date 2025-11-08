@@ -44,6 +44,8 @@ const getOrderPhaseInfo = (phase) => {
   return phaseMap[phase] || { label: 'Unknown', color: 'bg-gray-400', textColor: 'text-white', icon: '❓' };
 };
 
+const MIN_SEARCH_LENGTH = 2;
+
 const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder }) => {
   const [filters, setFilters] = useState({
     search: '',
@@ -74,6 +76,9 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
   const pagination = response?.pagination || {};
   const stats = response?.stats || {};
 
+  const [searchInput, setSearchInput] = useState('');
+  const [searchHint, setSearchHint] = useState('');
+
   // Handle filter changes
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -83,9 +88,34 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
     }));
   };
 
-  // Handle search
-  const handleSearch = (e) => {
-    handleFilterChange('search', e.target.value);
+  const applySearch = () => {
+    const trimmed = searchInput.trim();
+
+    if (trimmed.length === 0) {
+      setSearchHint('');
+      handleFilterChange('search', '');
+      return;
+    }
+
+    if (trimmed.length < MIN_SEARCH_LENGTH) {
+      setSearchHint(`Type at least ${MIN_SEARCH_LENGTH} characters to search`);
+      return;
+    }
+
+    setSearchHint('');
+    handleFilterChange('search', trimmed);
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applySearch();
+    }
   };
 
   // Clear all filters
@@ -100,6 +130,8 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
       sortBy: 'createdAt',
       sortOrder: 'desc',
     });
+    setSearchInput('');
+    setSearchHint('');
   };
 
   // Check if any filters are active
@@ -236,11 +268,24 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
               <Input
                 type="text"
                 placeholder="Search by order number, customer name, or phone..."
-                value={filters.search}
-                onChange={handleSearch}
-                className="pl-10 pr-4"
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onKeyDown={handleSearchKeyDown}
+                className="pl-10 pr-20"
               />
+              <button
+                type="button"
+                onClick={applySearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-sm font-medium text-white rounded-lg"
+                style={{ backgroundColor: '#fe7f2d' }}
+                disabled={isLoading}
+              >
+                Search
+              </button>
             </div>
+            {searchHint && (
+              <p className="mt-2 text-xs text-red-600">{searchHint}</p>
+            )}
           </div>
           <div className="flex items-center space-x-3">
             <Button

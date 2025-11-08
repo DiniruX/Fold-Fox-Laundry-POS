@@ -17,24 +17,38 @@ export const formatCurrency = (amount, currency = 'LKR') => {
 
 // Format date
 export const formatDate = (date, options = {}) => {
+  if (!date) return '';
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
   const defaultOptions = {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   };
   
-  return new Intl.DateTimeFormat('en-US', { ...defaultOptions, ...options }).format(new Date(date));
+  return new Intl.DateTimeFormat('en-US', { ...defaultOptions, ...options }).format(parsedDate);
 };
 
 // Format date and time
 export const formatDateTime = (date) => {
+  if (!date) return '';
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date));
+  }).format(parsedDate);
 };
 
 // Format phone number

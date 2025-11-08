@@ -205,6 +205,27 @@ Questions? Call us!`;
       }).join('\n');
     }
 
+    let chargesSection = '';
+    if (order.isExpressService && order.expressServiceFee > 0) {
+      chargesSection += `Express: +${formatOrderAmount(order.expressServiceFee)}\n`;
+    }
+    if (order.extraCharges?.total > 0) {
+      chargesSection += `Extra Items: +${formatOrderAmount(order.extraCharges.total)}\n`;
+    }
+    if (order.pickupRequired) {
+      chargesSection += `Pickup: ${order.pickupCharges > 0 ? formatOrderAmount(order.pickupCharges) : 'FREE'}\n`;
+    }
+    if (order.deliveryRequired) {
+      const distanceLabel = order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : '';
+      chargesSection += `Delivery${distanceLabel}: ${order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}\n`;
+    }
+    if (order.discountAmount > 0) {
+      chargesSection += `Discount: -${formatOrderAmount(order.discountAmount)}\n`;
+    }
+    if (order.taxAmount > 0) {
+      chargesSection += `Tax: ${formatOrderAmount(order.taxAmount)}\n`;
+    }
+
     const smsMessage = `${businessName} - Order Confirmed!
 
 Order: ${order.orderNumber}
@@ -213,7 +234,8 @@ Status: Processing
 Items:
 ${itemsList}
 
-${order.discountAmount > 0 ? `Subtotal: ${formatOrderAmount(order.subtotal)}\nDiscount: -${formatOrderAmount(order.discountAmount)}\n` : ''}Total: ${formatOrderAmount(order.totalAmount)}
+Subtotal: ${formatOrderAmount(order.subtotal)}
+${chargesSection}Total: ${formatOrderAmount(order.totalAmount)}
 
 Your order will be ready soon!
 Thank you!`;

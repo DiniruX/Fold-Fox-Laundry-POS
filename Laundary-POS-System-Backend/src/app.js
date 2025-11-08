@@ -75,6 +75,8 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
+const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -84,7 +86,7 @@ const limiter = rateLimit({
     message: 'Too many requests, please try again later'
   },
   // Skip rate limiting in development
-  skip: (req) => process.env.NODE_ENV === 'development',
+  skip: () => isDevelopment,
   // Use proper keyGenerator for IPv6 compatibility
   keyGenerator: (req) => {
     return req.ip || req.socket.remoteAddress || 'unknown';
@@ -100,12 +102,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 
 // Logging middleware
-if (process.env.NODE_ENV === 'development') {
+if (isDevelopment) {
   app.use(morgan('dev'));
 }
 
 // Production security enhancements
-if (process.env.NODE_ENV === 'production') {
+if (!isDevelopment) {
   // Trust proxy for correct IP addresses
   app.set('trust proxy', 1);
   

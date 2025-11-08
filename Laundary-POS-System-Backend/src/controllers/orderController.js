@@ -379,7 +379,12 @@ const createOrder = async (req, res) => {
               estimatedTime: totalEstimatedTime,
               subtotal: order.subtotal,
               discountAmount: order.discountAmount,
-              taxAmount: order.taxAmount
+              taxAmount: order.taxAmount,
+              expressServiceFee: order.expressServiceFee,
+              extraCharges: order.extraCharges,
+              pickupCharges: order.pickupCharges,
+              deliveryCharges: order.deliveryCharges,
+              deliveryDistance: order.deliveryDistance
             }
           });
         }
@@ -1323,7 +1328,12 @@ const confirmOrderItems = async (req, res) => {
             estimatedTime: totalEstimatedTime,
             subtotal: order.subtotal,
             discountAmount: order.discountAmount,
-            taxAmount: order.taxAmount
+            taxAmount: order.taxAmount,
+            expressServiceFee: order.expressServiceFee,
+            extraCharges: order.extraCharges,
+            pickupCharges: order.pickupCharges,
+            deliveryCharges: order.deliveryCharges,
+            deliveryDistance: order.deliveryDistance
           }
         });
         console.log(`✅ Order confirmation email (with actual amounts) sent to ${order.customer.email} for order ${order.orderNumber}`);
