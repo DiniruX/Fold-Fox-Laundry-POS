@@ -190,7 +190,7 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
       {/* Enhanced Stats Cards with Click-to-Filter */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
-          onClick={() => handleFilterChange('status', '')}
+          onClick={() => clearFilters()}
           className="bg-white p-6 rounded-xl shadow-md border-2 border-gray-100 hover:border-blue-300 hover:shadow-lg transition-all duration-200 text-left"
         >
           <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
         </button>
 
         <button
-          onClick={() => handleFilterChange('status', 'pickup')}
+          onClick={() => handleFilterChange('paymentStatus', 'unpaid')}
           className="bg-white p-6 rounded-xl shadow-md border-2 border-gray-100 hover:border-orange-300 hover:shadow-lg transition-all duration-200 text-left"
         >
           <div className="flex items-center justify-between">
