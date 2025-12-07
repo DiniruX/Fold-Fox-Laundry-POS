@@ -3,6 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { useCreateOrder, useUpdateOrder, useOrder } from '../services/orderService';
+import customerService from '../services/customerService';
 import {
   CLOTHING_CATEGORIES,
 } from '../constants';
@@ -177,12 +178,56 @@ const OrderFormPage = () => {
   }, [order, preSelectedCustomer, reset, setValue]);
 
   // Auto-populate address when customer is selected
+  // If customer object doesn't have address, fetch full customer details
   useEffect(() => {
-    if (selectedCustomer && selectedCustomer.address) {
-      const address = selectedCustomer.address;
-      setValue('pickupAddress', address);
-      setValue('deliveryAddress', address);
-    }
+    const fetchCustomerAddress = async () => {
+      if (selectedCustomer && selectedCustomer._id) {
+        // If address is already present, use it directly
+        if (selectedCustomer.address) {
+          const address = selectedCustomer.address;
+          setValue('pickupAddress', {
+            street: address.street || '',
+            city: address.city || '',
+            notes: '',
+          });
+          setValue('deliveryAddress', {
+            street: address.street || '',
+            city: address.city || '',
+            notes: '',
+          });
+        } else {
+          // Fetch full customer details to get address
+          try {
+            const response = await customerService.getCustomerById(selectedCustomer._id);
+            if (response.success && response.customer) {
+              const fullCustomer = response.customer;
+              // Update selectedCustomer with full details
+              setSelectedCustomer(fullCustomer);
+              
+              // Populate address if available
+              if (fullCustomer.address) {
+                const address = fullCustomer.address;
+                setValue('pickupAddress', {
+                  street: address.street || '',
+                  city: address.city || '',
+                  notes: '',
+                });
+                setValue('deliveryAddress', {
+                  street: address.street || '',
+                  city: address.city || '',
+                  notes: '',
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching customer details:', error);
+            // Continue without address if fetch fails
+          }
+        }
+      }
+    };
+
+    fetchCustomerAddress();
   }, [selectedCustomer, setValue]);
 
   // Handle form submission
@@ -417,9 +462,55 @@ const OrderFormPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Search Customer</label>
                   <CustomerSearch
-                    onSelectCustomer={(customer) => {
-                      setSelectedCustomer(customer);
-                      setValue('customerId', customer?._id || '');
+                    onSelectCustomer={async (customer) => {
+                      if (customer) {
+                        setSelectedCustomer(customer);
+                        setValue('customerId', customer._id || '');
+                        
+                        // Fetch full customer details if address is missing
+                        if (!customer.address && customer._id) {
+                          try {
+                            const response = await customerService.getCustomerById(customer._id);
+                            if (response.success && response.customer) {
+                              const fullCustomer = response.customer;
+                              setSelectedCustomer(fullCustomer);
+                              
+                              // Populate address if available
+                              if (fullCustomer.address) {
+                                const address = fullCustomer.address;
+                                setValue('pickupAddress', {
+                                  street: address.street || '',
+                                  city: address.city || '',
+                                  notes: '',
+                                });
+                                setValue('deliveryAddress', {
+                                  street: address.street || '',
+                                  city: address.city || '',
+                                  notes: '',
+                                });
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Error fetching customer details:', error);
+                          }
+                        } else if (customer.address) {
+                          // Address is already available, populate directly
+                          const address = customer.address;
+                          setValue('pickupAddress', {
+                            street: address.street || '',
+                            city: address.city || '',
+                            notes: '',
+                          });
+                          setValue('deliveryAddress', {
+                            street: address.street || '',
+                            city: address.city || '',
+                            notes: '',
+                          });
+                        }
+                      } else {
+                        setSelectedCustomer(null);
+                        setValue('customerId', '');
+                      }
                     }}
                     selectedCustomer={selectedCustomer}
                   />
