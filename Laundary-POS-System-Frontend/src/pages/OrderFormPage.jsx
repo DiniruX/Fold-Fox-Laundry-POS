@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -26,6 +26,9 @@ const OrderFormPage = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isExpressService, setIsExpressService] = useState(false);
+  
+  // Ref to track if we just loaded an order to prevent overwriting order-specific addresses
+  const isSettingUpOrderRef = useRef(false);
 
   const isEditing = !!id;
   const title = isEditing ? 'Edit Order' : 'Create New Order';
@@ -114,6 +117,9 @@ const OrderFormPage = () => {
   // Reset form when order changes
   useEffect(() => {
     if (order) {
+      // Set flag to prevent address overwriting during order setup
+      isSettingUpOrderRef.current = true;
+      
       reset({
         customerId: order.customer?._id || '',
         items: order.items?.map(item => ({
@@ -124,11 +130,27 @@ const OrderFormPage = () => {
           notes: item.notes || '',
         })) || [],
         pickupRequired: order.pickupRequired || false,
-        pickupAddress: order.pickupAddress || {},
+        pickupAddress: order.pickupAddress ? {
+          street: order.pickupAddress.street || '',
+          city: order.pickupAddress.city || '',
+          notes: order.pickupAddress.notes || '',
+        } : {
+          street: '',
+          city: '',
+          notes: '',
+        },
         pickupPriceType: order.pickupCharges > 0 ? 'price' : 'free',
         pickupCharges: order.pickupCharges || 0,
         deliveryRequired: order.deliveryRequired || false,
-        deliveryAddress: order.deliveryAddress || {},
+        deliveryAddress: order.deliveryAddress ? {
+          street: order.deliveryAddress.street || '',
+          city: order.deliveryAddress.city || '',
+          notes: order.deliveryAddress.notes || '',
+        } : {
+          street: '',
+          city: '',
+          notes: '',
+        },
         deliveryPriceType: order.deliveryCharges > 0 ? 'price' : 'free',
         deliveryCharges: order.deliveryCharges || 0,
         deliveryDistance: order.deliveryDistance || 0,
@@ -138,6 +160,11 @@ const OrderFormPage = () => {
       });
       setSelectedCustomer(order.customer);
       setIsExpressService(order.isExpressService || false);
+      
+      // Reset flag after a short delay to allow form to settle
+      setTimeout(() => {
+        isSettingUpOrderRef.current = false;
+      }, 100);
     } else if (!preSelectedCustomer) {
       reset({
         customerId: '',
@@ -178,57 +205,69 @@ const OrderFormPage = () => {
   }, [order, preSelectedCustomer, reset, setValue]);
 
   // Auto-populate address when customer is selected
-  // If customer object doesn't have address, fetch full customer details
   useEffect(() => {
+    if (!selectedCustomer || !selectedCustomer._id) {
+      return;
+    }
+
+    // Bug 2 Fix: Don't overwrite addresses when setting up an order for editing
+    if (isSettingUpOrderRef.current) {
+      return;
+    }
+
+    // Bug 2 Fix: Check if addresses are already populated (from order) before overwriting
+    const currentPickupStreet = watch('pickupAddress.street');
+    const currentDeliveryStreet = watch('deliveryAddress.street');
+    
+    // If editing and addresses are already populated, don't overwrite with customer address
+    if (isEditing && (currentPickupStreet || currentDeliveryStreet)) {
+      return;
+    }
+
+    // Helper function to map customer address to form structure
+    const mapAddressToForm = (address) => ({
+      street: address.street || '',
+      city: address.city || '',
+      notes: '', // Customer address doesn't have notes, so default to empty string
+    });
+
+    // Bug 1 Fix: If customer has address, use it directly
+    if (selectedCustomer.address) {
+      const address = selectedCustomer.address;
+      const pickupAddress = mapAddressToForm(address);
+      const deliveryAddress = mapAddressToForm(address);
+      setValue('pickupAddress', pickupAddress);
+      setValue('deliveryAddress', deliveryAddress);
+      return;
+    }
+
+    // Bug 1 Fix: Fetch full customer details if address is missing
     const fetchCustomerAddress = async () => {
-      if (selectedCustomer && selectedCustomer._id) {
-        // If address is already present, use it directly
-        if (selectedCustomer.address) {
-          const address = selectedCustomer.address;
-          setValue('pickupAddress', {
-            street: address.street || '',
-            city: address.city || '',
-            notes: '',
-          });
-          setValue('deliveryAddress', {
-            street: address.street || '',
-            city: address.city || '',
-            notes: '',
-          });
-        } else {
-          // Fetch full customer details to get address
-          try {
-            const response = await customerService.getCustomerById(selectedCustomer._id);
-            if (response.success && response.customer) {
-              const fullCustomer = response.customer;
-              // Update selectedCustomer with full details
-              setSelectedCustomer(fullCustomer);
-              
-              // Populate address if available
-              if (fullCustomer.address) {
-                const address = fullCustomer.address;
-                setValue('pickupAddress', {
-                  street: address.street || '',
-                  city: address.city || '',
-                  notes: '',
-                });
-                setValue('deliveryAddress', {
-                  street: address.street || '',
-                  city: address.city || '',
-                  notes: '',
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching customer details:', error);
-            // Continue without address if fetch fails
+      try {
+        const response = await customerService.getCustomerById(selectedCustomer._id);
+        if (response.success && response.customer) {
+          const fullCustomer = response.customer;
+          
+          // Update selectedCustomer with full details
+          setSelectedCustomer(fullCustomer);
+          
+          // Populate address if available
+          if (fullCustomer.address) {
+            const address = fullCustomer.address;
+            const pickupAddress = mapAddressToForm(address);
+            const deliveryAddress = mapAddressToForm(address);
+            setValue('pickupAddress', pickupAddress);
+            setValue('deliveryAddress', deliveryAddress);
           }
         }
+      } catch (error) {
+        console.error('Error fetching customer details:', error);
+        // Continue without address if fetch fails
       }
     };
 
     fetchCustomerAddress();
-  }, [selectedCustomer, setValue]);
+  }, [selectedCustomer?._id, isEditing, setValue, watch]);
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -467,45 +506,18 @@ const OrderFormPage = () => {
                         setSelectedCustomer(customer);
                         setValue('customerId', customer._id || '');
                         
-                        // Fetch full customer details if address is missing
+                        // Bug 1 Fix: Fetch full customer details if address is missing
                         if (!customer.address && customer._id) {
                           try {
                             const response = await customerService.getCustomerById(customer._id);
                             if (response.success && response.customer) {
                               const fullCustomer = response.customer;
                               setSelectedCustomer(fullCustomer);
-                              
-                              // Populate address if available
-                              if (fullCustomer.address) {
-                                const address = fullCustomer.address;
-                                setValue('pickupAddress', {
-                                  street: address.street || '',
-                                  city: address.city || '',
-                                  notes: '',
-                                });
-                                setValue('deliveryAddress', {
-                                  street: address.street || '',
-                                  city: address.city || '',
-                                  notes: '',
-                                });
-                              }
+                              // Address population will be handled by the useEffect
                             }
                           } catch (error) {
                             console.error('Error fetching customer details:', error);
                           }
-                        } else if (customer.address) {
-                          // Address is already available, populate directly
-                          const address = customer.address;
-                          setValue('pickupAddress', {
-                            street: address.street || '',
-                            city: address.city || '',
-                            notes: '',
-                          });
-                          setValue('deliveryAddress', {
-                            street: address.street || '',
-                            city: address.city || '',
-                            notes: '',
-                          });
                         }
                       } else {
                         setSelectedCustomer(null);
@@ -1076,4 +1088,3 @@ const OrderFormPage = () => {
 };
 
 export default OrderFormPage;
-
