@@ -267,7 +267,7 @@ const OrderFormPage = () => {
     };
 
     fetchCustomerAddress();
-  }, [selectedCustomer?._id, isEditing, setValue, watch]);
+  }, [selectedCustomer?._id, isEditing, setValue]);
 
   // Handle form submission
   const onSubmit = async (data) => {
