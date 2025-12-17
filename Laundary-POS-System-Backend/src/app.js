@@ -23,10 +23,13 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration for Vite frontend
+// CORS configuration for frontend clients
 const allowedOrigins = [
-  'http://localhost:5173', // Local development
-  'http://localhost:3000',
+  'http://localhost:5173', // Local development (Vite default)
+  'http://localhost:3000', // Alternative local dev port
+  // Explicitly allow the production frontend domain
+  'https://www.foldfox.lk',
+  'https://foldfox.lk',
 ];
 
 // Add production frontend URLs from environment variables
