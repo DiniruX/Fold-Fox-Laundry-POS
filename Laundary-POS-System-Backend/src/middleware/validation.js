@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const { CATEGORY_KEY_PATTERN } = require('../constants/clothingCategories');
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -69,7 +70,7 @@ const validateOrder = [
     .withMessage('Weight must be a non-negative number'),
   body('items.*.clothingCategory')
     .optional()
-    .isIn(['normal_clothes', 'bed_sheets', 'towels', 'blazers', 'saree', 'curtains', 'pillowcases', 'suits', 'jeans', 'blankets', 'other'])
+    .matches(CATEGORY_KEY_PATTERN)
     .withMessage('Invalid clothing category'),
   body('pickupRequired')
     .optional()

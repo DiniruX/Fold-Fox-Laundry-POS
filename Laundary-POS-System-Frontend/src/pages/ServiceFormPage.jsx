@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import {
   useService,
   useCreateService,
   useUpdateService,
+  useClothingCategories,
+  useCreateClothingCategory,
+  useDeleteClothingCategory,
   getStatusLabel,
-  getClothingCategoryLabel,
   serviceValidation,
 } from '../services/serviceService';
-import { SERVICE_STATUSES, CLOTHING_CATEGORIES } from '../constants';
+import { SERVICE_STATUSES } from '../constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -22,6 +24,12 @@ const ServiceFormPage = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [clothingPrices, setClothingPrices] = useState({});
   const [clothingPriceTypes, setClothingPriceTypes] = useState({}); // New: priceType per category
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  const { categories: clothingCategories } = useClothingCategories();
+  const createCategoryMutation = useCreateClothingCategory();
+  const deleteCategoryMutation = useDeleteClothingCategory();
 
   const isEditing = !!id;
   const title = isEditing ? 'Edit Service' : 'Create New Service';
@@ -64,10 +72,8 @@ const ServiceFormPage = () => {
   // Reset form when service or duplicate data changes
   useEffect(() => {
     const dataToLoad = service || duplicateFrom;
-    const defaultPriceTypes = Object.values(CLOTHING_CATEGORIES).reduce((acc, category) => {
-      acc[category] = 'per_piece';
-      return acc;
-    }, {});
+    // Price types only matter for categories that get a price; untouched ones fall back to per_piece in the UI
+    const defaultPriceTypes = {};
 
     if (dataToLoad) {
       const formData = {
@@ -109,14 +115,20 @@ const ServiceFormPage = () => {
     try {
       const priceValues = Object.values(clothingPrices || {});
       const basePrice = priceValues.length > 0 ? Math.min(...priceValues) : 0;
-      const legacyPriceType = Object.values(clothingPriceTypes || {})[0] || 'per_piece';
+
+      // Every priced category needs a priceType; the select shows per_piece when none was chosen
+      const pricedCategoryTypes = Object.keys(clothingPrices || {}).reduce((acc, category) => {
+        acc[category] = clothingPriceTypes[category] || 'per_piece';
+        return acc;
+      }, {});
+      const legacyPriceType = Object.values(pricedCategoryTypes)[0] || 'per_piece';
 
       const submitData = {
         ...data,
         priceType: legacyPriceType,
         basePrice,
         clothingPrices: clothingPrices,
-        clothingPriceTypes: clothingPriceTypes, // Include category-specific priceTypes
+        clothingPriceTypes: pricedCategoryTypes, // Include category-specific priceTypes
       };
       
       if (isEditing) {
@@ -169,6 +181,25 @@ const ServiceFormPage = () => {
       delete newPriceTypes[category];
     }
     setClothingPriceTypes(newPriceTypes);
+  };
+
+  // Add a custom clothing category (shared across all services)
+  const handleAddCategory = async () => {
+    const label = newCategoryName.trim();
+    if (label.length < 2) return;
+    try {
+      await createCategoryMutation.mutateAsync(label);
+      setNewCategoryName('');
+      setShowAddCategory(false);
+    } catch (error) {
+      // Error toast shown by mutation
+    }
+  };
+
+  const handleDeleteCategory = (category) => {
+    // The backend refuses if any saved service still has a price for this category
+    if (!window.confirm(`Delete the "${category.label}" category? This removes it for all services.`)) return;
+    deleteCategoryMutation.mutate(category.key);
   };
 
   const isLoading = createServiceMutation.isPending || updateServiceMutation.isPending || isLoadingService;
@@ -340,11 +371,29 @@ const ServiceFormPage = () => {
                     Set different prices and price types (per kg or per piece) for each clothing category. At least one category must have pricing before continuing.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
-                      <div key={key} className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          {getClothingCategoryLabel(category)}
-                        </label>
+                    {clothingCategories.map(({ key: category, label, isCustom }) => (
+                      <div key={category} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-sm font-medium text-gray-700">
+                            {label}
+                            {isCustom && (
+                              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-orange-100 text-orange-700 align-middle">
+                                CUSTOM
+                              </span>
+                            )}
+                          </label>
+                          {isCustom && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory({ key: category, label })}
+                              disabled={deleteCategoryMutation.isPending}
+                              className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              title={`Delete "${label}" category`}
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                         {/* Price Type Selector */}
                         <select
                           value={clothingPriceTypes[category] || 'per_piece'}
@@ -367,8 +416,66 @@ const ServiceFormPage = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* Add custom category */}
+                  <div className="mt-4">
+                    {showAddCategory ? (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={newCategoryName}
+                          maxLength={40}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCategory();
+                            } else if (e.key === 'Escape') {
+                              setShowAddCategory(false);
+                              setNewCategoryName('');
+                            }
+                          }}
+                          placeholder="New category name, e.g. Wedding Dress"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddCategory}
+                            disabled={newCategoryName.trim().length < 2 || createCategoryMutation.isPending}
+                            className="px-4 py-2 rounded-md text-sm font-semibold text-white disabled:opacity-50"
+                            style={{ backgroundColor: '#fe7f2d' }}
+                          >
+                            {createCategoryMutation.isPending ? 'Adding...' : 'Add'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAddCategory(false);
+                              setNewCategoryName('');
+                            }}
+                            className="px-4 py-2 rounded-md text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCategory(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-orange-400 hover:text-orange-600 transition-colors"
+                      >
+                        <PlusIcon className="h-5 w-5" />
+                        Add custom category
+                      </button>
+                    )}
+                  </div>
+
                   <p className="text-xs text-gray-500 mt-2">
                     Select price type (per kg or per piece) and enter the price for each clothing category you offer.
+                    Custom categories are shared across all services.
                   </p>
                 </div>
                 

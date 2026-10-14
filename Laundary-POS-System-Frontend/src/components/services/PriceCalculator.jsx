@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalculatorIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import {
   useCalculateServicePrice,
+  useClothingCategories,
   useServices,
   formatPrice,
   getPriceTypeLabel,
@@ -10,7 +11,6 @@ import {
   getServicePricingLabel,
   getServicePriceTypeSummary,
 } from '../../services/serviceService';
-import { CLOTHING_CATEGORIES } from '../../constants';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
@@ -26,6 +26,7 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
   const [calculationResult, setCalculationResult] = useState(null);
 
   const calculatePriceMutation = useCalculateServicePrice();
+  const { categories: clothingCategories } = useClothingCategories();
   
   // Fetch real services from API
   const { data: servicesData, isLoading: servicesLoading } = useServices({
@@ -215,9 +216,9 @@ const PriceCalculator = ({ isOpen, onClose, service, onServiceSelect }) => {
                   onChange={(e) => setCalculationData(prev => ({ ...prev, clothingCategory: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {Object.entries(CLOTHING_CATEGORIES).map(([key, category]) => (
-                    <option key={key} value={category}>
-                      {getClothingCategoryLabel(category)}
+                  {clothingCategories.map(({ key, label }) => (
+                    <option key={key} value={key}>
+                      {label}
                     </option>
                   ))}
                 </select>

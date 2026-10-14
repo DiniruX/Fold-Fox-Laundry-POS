@@ -5,10 +5,8 @@ import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useCreateOrder, useUpdateOrder, useOrder } from '../services/orderService';
 import customerService from '../services/customerService';
 import {
-  CLOTHING_CATEGORIES,
-} from '../constants';
-import {
   getClothingCategoryLabel,
+  useClothingCategories,
   useServices,
   getServicePricingLabel,
   getServiceMinPrice,
@@ -26,7 +24,8 @@ const OrderFormPage = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isExpressService, setIsExpressService] = useState(false);
-  
+  const { categories: clothingCategories } = useClothingCategories();
+
   // Ref to track if we just loaded an order to prevent overwriting order-specific addresses
   const isSettingUpOrderRef = useRef(false);
 
@@ -738,9 +737,9 @@ const OrderFormPage = () => {
                                   })}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                                 >
-                                  {Object.entries(CLOTHING_CATEGORIES).map(([key, value]) => (
-                                    <option key={key} value={value}>
-                                      {getClothingCategoryLabel(value)}
+                                  {clothingCategories.map(({ key, label }) => (
+                                    <option key={key} value={key}>
+                                      {label}
                                     </option>
                                   ))}
                                 </select>

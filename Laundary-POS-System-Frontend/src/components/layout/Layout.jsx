@@ -3,8 +3,12 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { ArrowUpIcon } from '@heroicons/react/24/outline';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { useClothingCategories } from '../../services/serviceService';
 
 const Layout = () => {
+  // Load custom clothing category labels once for receipts, order details, etc.
+  useClothingCategories();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);

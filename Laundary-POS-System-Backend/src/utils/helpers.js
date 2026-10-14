@@ -1,4 +1,5 @@
 const moment = require('moment');
+const { FIXED_CLOTHING_CATEGORIES } = require('../constants/clothingCategories');
 
 // Format date for display
 const formatDate = (date, format = 'YYYY-MM-DD') => {
@@ -138,21 +139,10 @@ const generateQRCodeData = (order) => {
 };
 
 // Get clothing category label
+// Custom categories fall back to a title-cased version of their key ("wedding_dress" -> "Wedding Dress")
 const getClothingCategoryLabel = (category) => {
-  const labels = {
-    normal_clothes: 'Normal Clothes',
-    bed_sheets: 'Bed Sheets',
-    towels: 'Towels',
-    blazers: 'Blazers',
-    saree: 'Saree',
-    curtains: 'Curtains',
-    pillowcases: 'Pillowcases',
-    suits: 'Suits',
-    jeans: 'Jeans',
-    blankets: 'Blankets',
-    other: 'Other',
-  };
-  return labels[category] || category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const fixed = FIXED_CLOTHING_CATEGORIES.find(c => c.key === category);
+  return fixed ? fixed.label : category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 // Format service name with clothing category

@@ -20,9 +20,11 @@ const orderItemSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Weight cannot be negative']
   },
+  // Built-in or custom category key (see constants/clothingCategories.js and ClothingCategory model)
   clothingCategory: {
     type: String,
-    enum: ['normal_clothes', 'bed_sheets', 'towels', 'blazers', 'saree', 'curtains', 'pillowcases', 'suits', 'jeans', 'blankets', 'other'],
+    trim: true,
+    match: [/^[a-z0-9_]+$/, 'Invalid clothing category'],
     default: 'normal_clothes'
   },
   unitPrice: {

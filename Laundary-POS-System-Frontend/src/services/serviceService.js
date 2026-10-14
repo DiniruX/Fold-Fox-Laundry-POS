@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { servicesAPI } from './api';
+import { servicesAPI, clothingCategoriesAPI } from './api';
+import { CLOTHING_CATEGORIES } from '../constants';
 
 // Query Keys
 export const SERVICE_QUERY_KEYS = {
@@ -9,6 +10,80 @@ export const SERVICE_QUERY_KEYS = {
   SERVICE_STATS: 'serviceStats',
   SERVICE_STATUSES: 'serviceStatuses',
   SERVICE_ANALYTICS: 'serviceAnalytics',
+  CLOTHING_CATEGORIES: 'clothingCategories',
+};
+
+const FIXED_CATEGORY_LABELS = {
+  [CLOTHING_CATEGORIES.NORMAL_CLOTHES]: 'Normal Clothes',
+  [CLOTHING_CATEGORIES.BED_SHEETS]: 'Bed Sheets',
+  [CLOTHING_CATEGORIES.TOWELS]: 'Towels',
+  [CLOTHING_CATEGORIES.BLAZERS]: 'Blazers',
+  [CLOTHING_CATEGORIES.SAREE]: 'Saree',
+  [CLOTHING_CATEGORIES.CURTAINS]: 'Curtains',
+  [CLOTHING_CATEGORIES.PILLOWCASES]: 'Pillowcases',
+  [CLOTHING_CATEGORIES.SUITS]: 'Suits',
+  [CLOTHING_CATEGORIES.JEANS]: 'Jeans',
+  [CLOTHING_CATEGORIES.BLANKETS]: 'Blankets',
+  [CLOTHING_CATEGORIES.OTHER]: 'Other',
+};
+
+// Labels for custom categories, filled whenever the category list is fetched,
+// so getClothingCategoryLabel() can show them anywhere (receipts, order details, ...)
+const customCategoryLabels = {};
+
+// Built-in categories, used until the API list has loaded
+const FIXED_CATEGORY_LIST = Object.entries(FIXED_CATEGORY_LABELS).map(([key, label]) => ({
+  key,
+  label,
+  isCustom: false,
+}));
+
+// All clothing categories: built-in first, then admin-added custom ones
+export const useClothingCategories = () => {
+  const query = useQuery({
+    queryKey: [SERVICE_QUERY_KEYS.CLOTHING_CATEGORIES],
+    queryFn: async () => {
+      const response = await clothingCategoriesAPI.getAll();
+      const categories = response.data.data || [];
+      categories
+        .filter((c) => c.isCustom)
+        .forEach((c) => { customCategoryLabels[c.key] = c.label; });
+      return categories;
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  return { ...query, categories: query.data?.length ? query.data : FIXED_CATEGORY_LIST };
+};
+
+export const useCreateClothingCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (label) => clothingCategoriesAPI.create({ label }),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [SERVICE_QUERY_KEYS.CLOTHING_CATEGORIES] });
+      toast.success(`Category "${response.data.data.label}" added`);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to add category');
+    },
+  });
+};
+
+export const useDeleteClothingCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (key) => clothingCategoriesAPI.delete(key),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [SERVICE_QUERY_KEYS.CLOTHING_CATEGORIES] });
+      toast.success('Category deleted');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to delete category');
+    },
+  });
 };
 
 // Custom hooks for service management
@@ -268,20 +343,9 @@ export const getStatusLabel = (status) => {
 };
 
 export const getClothingCategoryLabel = (category) => {
-  const labels = {
-    normal_clothes: 'Normal Clothes',
-    bed_sheets: 'Bed Sheets',
-    towels: 'Towels',
-    blazers: 'Blazers',
-    saree: 'Saree',
-    curtains: 'Curtains',
-    pillowcases: 'Pillowcases',
-    suits: 'Suits',
-    jeans: 'Jeans',
-    blankets: 'Blankets',
-    other: 'Other',
-  };
-  return labels[category] || category?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return FIXED_CATEGORY_LABELS[category]
+    || customCategoryLabels[category]
+    || category?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
 
 export const getStatusBadgeColor = (isActive) => {
@@ -347,6 +411,9 @@ export default {
   useBulkUpdateServices,
   useDuplicateService,
   useCalculateServicePrice,
+  useClothingCategories,
+  useCreateClothingCategory,
+  useDeleteClothingCategory,
   formatPrice,
   getPriceTypeLabel,
   getStatusLabel,

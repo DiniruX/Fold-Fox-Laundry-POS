@@ -142,6 +142,13 @@ export const servicesAPI = {
   calculatePrice: (id, data) => api.post(`/services/${id}/calculate-price`, data),
 };
 
+// Clothing Categories API methods (built-in + custom)
+export const clothingCategoriesAPI = {
+  getAll: () => api.get('/clothing-categories'),
+  create: (data) => api.post('/clothing-categories', data),
+  delete: (key) => api.delete(`/clothing-categories/${key}`),
+};
+
 // Staff API methods
 export const staffAPI = {
   getAll: (params) => api.get('/staff', { params }),

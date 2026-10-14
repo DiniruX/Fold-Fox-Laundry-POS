@@ -1,5 +1,6 @@
 const Service = require('../models/Service');
 const Order = require('../models/Order');
+const { CATEGORY_KEY_PATTERN } = require('../constants/clothingCategories');
 
 /**
  * Service Controller - Comprehensive CRUD operations with role-based permissions
@@ -55,6 +56,14 @@ const createService = async (req, res) => {
     // Ensure all categories in clothingPrices have a corresponding priceType
     const priceCategories = Object.keys(clothingPrices);
     const priceTypeCategories = Object.keys(clothingPriceTypes);
+
+    const invalidKeys = priceCategories.filter(cat => !CATEGORY_KEY_PATTERN.test(cat));
+    if (invalidKeys.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid clothing category: ${invalidKeys.join(', ')}`
+      });
+    }
     const missingPriceTypes = priceCategories.filter(cat => !priceTypeCategories.includes(cat));
     
     if (missingPriceTypes.length > 0) {
@@ -367,6 +376,12 @@ const updateService = async (req, res) => {
     if (clothingPrices !== undefined) {
       const validatedClothingPrices = {};
       for (const [category, price] of Object.entries(clothingPrices)) {
+        if (!CATEGORY_KEY_PATTERN.test(category)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid clothing category: ${category}`
+          });
+        }
         const parsedPrice = Number(price);
         if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
           return res.status(400).json({ 
