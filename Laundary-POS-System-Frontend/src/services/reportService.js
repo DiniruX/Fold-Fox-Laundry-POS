@@ -50,6 +50,36 @@ export const getServiceReport = async (params = {}) => {
   }
 };
 
+// Get income & expense report (admin only)
+export const getIncomeExpenseReport = async (params = {}) => {
+  try {
+    const response = await api.get('/reports/income-expense', { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Export income & expense report to Excel
+export const exportIncomeExpenseToExcel = async (params = {}) => {
+  try {
+    const response = await api.get('/reports/export/income-expense', {
+      params,
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'income-expense-report.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 // Export revenue report to Excel
 export const exportRevenueToExcel = async (params = {}) => {
   try {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { minimumOrderAdjustment } = require('../config/pricing');
 
 const orderItemSchema = new mongoose.Schema({
   service: {
@@ -152,6 +153,11 @@ const orderSchema = new mongoose.Schema({
     city: String,
     notes: String
   },
+  // Date the customer expects the delivery (set when deliveryRequired)
+  expectedDeliveryDate: {
+    type: Date,
+    index: true
+  },
   actualDeliveryDate: {
     type: Date
   },
@@ -176,6 +182,8 @@ const orderSchema = new mongoose.Schema({
     min: [0, 'Express service fee cannot be negative']
   },
   // Extra Charges (e.g., hangers, bags, etc.)
+  // `id` holds the ExtraItem _id when the line came from the "Other Items"
+  // catalog, or a client-generated id for ad-hoc items added at payment time.
   extraCharges: {
     items: [{
       id: String,
@@ -209,8 +217,20 @@ const orderSchema = new mongoose.Schema({
   discount: {
     type: {
       type: String,
-      enum: ['campaign', 'student', 'manual', 'loyalty', 'none'],
+      enum: ['campaign', 'student', 'manual', 'promotion', 'none'],
       default: 'none'
+    },
+    // Admin-managed promotion applied to this order (type = 'promotion')
+    promotion: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Discount'
+    },
+    // auto: derived from the customer | promotion: cashier picked an offer |
+    // manual_none: cashier explicitly removed the discount
+    source: {
+      type: String,
+      enum: ['auto', 'promotion', 'manual_none'],
+      default: 'auto'
     },
     percentage: {
       type: Number,
@@ -242,6 +262,12 @@ const orderSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Discount amount cannot be negative']
   },
+  // Added when the order would otherwise fall below MINIMUM_ORDER_AMOUNT
+  minimumOrderAdjustment: {
+    type: Number,
+    default: 0,
+    min: [0, 'Minimum order adjustment cannot be negative']
+  },
   totalAmount: {
     type: Number,
     required: true,
@@ -257,16 +283,6 @@ const orderSchema = new mongoose.Schema({
     default: 0
   },
   payments: [paymentSchema],
-  loyaltyPointsUsed: {
-    type: Number,
-    default: 0,
-    min: [0, 'Loyalty points used cannot be negative']
-  },
-  loyaltyPointsEarned: {
-    type: Number,
-    default: 0,
-    min: [0, 'Loyalty points earned cannot be negative']
-  },
   specialInstructions: {
     type: String,
     maxLength: [500, 'Special instructions cannot exceed 500 characters']
@@ -407,21 +423,9 @@ orderSchema.pre('save', function(next) {
   const discountAmount = Number(this.discountAmount) || 0;
   
   // Calculate total with proper order of operations and rounding to avoid floating point errors
-  const calculatedTotal = this.subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount;
-  this.totalAmount = Math.round(calculatedTotal * 100) / 100;
-    
-  // Debug logging
-  console.log(`[Order Pre-Save] Recalculating totals for order ${this.orderNumber}:`, {
-    subtotal: this.subtotal,
-    taxAmount,
-    expressServiceFee,
-    extraChargesAmount,
-    pickupCharges,
-    deliveryCharges,
-    discountAmount,
-    calculatedTotal: this.totalAmount,
-    beforeRounding: calculatedTotal
-  });
+  const baseTotal = Math.round((this.subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount) * 100) / 100;
+  this.minimumOrderAdjustment = minimumOrderAdjustment(baseTotal);
+  this.totalAmount = Math.round((baseTotal + this.minimumOrderAdjustment) * 100) / 100;
   }
   next();
 });
@@ -513,12 +517,6 @@ orderSchema.methods.addPayment = function(paymentData) {
   return this.save();
 };
 
-// Instance method to calculate loyalty points
-orderSchema.methods.calculateLoyaltyPoints = function(pointsPerRupee = 1) {
-  this.loyaltyPointsEarned = Math.floor(this.totalAmount * pointsPerRupee);
-  return this.loyaltyPointsEarned;
-};
-
 /**
  * Apply discount to order
  * @param {Object} discountInfo - Discount information from customer.getApplicableDiscount()
@@ -573,26 +571,13 @@ orderSchema.methods.recalculateTotal = function() {
   const discountAmount = Number(this.discountAmount) || 0;
   const paidAmount = Number(this.paidAmount) || 0;
   
-  // Calculate total: subtotal + fees + charges - discount
+  // Calculate total: subtotal + fees + charges - discount, then top up to the minimum
   // Use rounding to avoid floating point precision errors
-  const calculatedTotal = subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount;
-  this.totalAmount = Math.round(calculatedTotal * 100) / 100;
+  const baseTotal = Math.round((subtotal + taxAmount + expressServiceFee + extraChargesAmount + pickupCharges + deliveryCharges - discountAmount) * 100) / 100;
+  this.minimumOrderAdjustment = minimumOrderAdjustment(baseTotal);
+  this.totalAmount = Math.round((baseTotal + this.minimumOrderAdjustment) * 100) / 100;
   this.balanceAmount = Math.round((this.totalAmount - paidAmount) * 100) / 100;
-  
-  console.log(`[Order.recalculateTotal] Order ${this.orderNumber}:`, {
-    subtotal,
-    taxAmount,
-    expressServiceFee,
-    extraChargesAmount,
-    pickupCharges,
-    deliveryCharges,
-    discountAmount,
-    totalAmount: this.totalAmount,
-    paidAmount,
-    balanceAmount: this.balanceAmount,
-    beforeRounding: calculatedTotal
-  });
-  
+
   return this.totalAmount;
 };
 

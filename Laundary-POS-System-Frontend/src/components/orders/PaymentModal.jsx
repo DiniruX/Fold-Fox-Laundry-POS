@@ -1,31 +1,23 @@
 import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { CurrencyDollarIcon, BanknotesIcon, ArrowPathIcon, ClipboardDocumentIcon, PhoneIcon, PlusIcon, TrashIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
-import { useAddPayment } from '../../services/orderService';
-import { PAYMENT_METHODS } from '../../constants';
-import { getPaymentMethodLabel, formatOrderAmount } from '../../services/orderService';
+import { CurrencyDollarIcon, BanknotesIcon, ArrowPathIcon, ClipboardDocumentIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import { useAddPayment, usePricingConfig } from '../../services/orderService';
+import { PAYMENT_METHODS, BUSINESS_NAME } from '../../constants';
+import { formatOrderAmount } from '../../services/orderService';
 import { getBankAccountDetails, sendBankAccountDetails } from '../../services/paymentService';
 import Button from '../ui/Button';
-import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
-// Common extra items that customers might purchase
-const COMMON_EXTRA_ITEMS = [
-  { name: 'Hanger (Plastic)', price: 25 },
-  { name: 'Hanger (Wooden)', price: 50 },
-  { name: 'Garment Bag', price: 100 },
-  { name: 'Laundry Bag', price: 150 },
-  { name: 'Fabric Softener', price: 200 },
-  { name: 'Stain Remover', price: 250 },
-];
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 const PaymentModal = ({ isOpen, onClose, order }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentStep, setPaymentStep] = useState('method'); // 'method', 'bank_details', 'transaction_id'
   const [bankAccountSent, setBankAccountSent] = useState(false);
-  const [extraItems, setExtraItems] = useState([]);
+  // 'full' settles the balance; 'partial' lets the cashier enter what was handed over
+  const [paymentMode, setPaymentMode] = useState('full');
 
   const {
     register,
@@ -45,13 +37,18 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
 
   const addPaymentMutation = useAddPayment();
   const paymentMethod = watch('method');
-  
-  // Calculate total extra charges
-  const extraChargesTotal = extraItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Calculate final payment amount (balance + extra charges)
-  const baseAmount = order?.balanceAmount || 0;
-  const paymentAmount = baseAmount + extraChargesTotal;
+  const enteredAmount = watch('amount');
+
+  const { pricing } = usePricingConfig();
+  const currentTopUp = Number(order?.minimumOrderAdjustment) || 0;
+
+  // What is still owed, and what this payment will collect
+  const balanceDue = round2(order?.balanceAmount || 0);
+  const partialAmount = round2(enteredAmount);
+  const paymentAmount = paymentMode === 'full' ? balanceDue : Math.min(Math.max(partialAmount, 0), balanceDue);
+  const remainingAfter = round2(balanceDue - paymentAmount);
+  const amountError =
+    paymentMode === 'partial' && (partialAmount <= 0 ? 'Enter the amount received' : partialAmount > balanceDue ? `Cannot exceed the balance of ${formatOrderAmount(balanceDue)}` : '');
 
   // Get bank account details from service
   const bankAccountDetails = getBankAccountDetails();
@@ -68,27 +65,9 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
       setPaymentStep('method');
       setBankAccountSent(false);
       setSendWarning(null);
-      setExtraItems([]);
+      setPaymentMode('full');
     }
   }, [isOpen, order, reset]);
-
-  // Add extra item
-  const addExtraItem = (itemTemplate = null) => {
-    const newItem = itemTemplate || { name: '', price: 0, quantity: 1 };
-    setExtraItems([...extraItems, { ...newItem, id: Date.now() }]);
-  };
-
-  // Remove extra item
-  const removeExtraItem = (itemId) => {
-    setExtraItems(extraItems.filter(item => item.id !== itemId));
-  };
-
-  // Update extra item
-  const updateExtraItem = (itemId, field, value) => {
-    setExtraItems(extraItems.map(item => 
-      item.id === itemId ? { ...item, [field]: value } : item
-    ));
-  };
 
   const handlePaymentMethodChange = (method) => {
     setValue('method', method);
@@ -133,22 +112,22 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
   };
 
   const onSubmit = async (data) => {
+    if (amountError) {
+      toast.error(amountError);
+      return;
+    }
+    if (paymentAmount <= 0) {
+      toast.error('Nothing left to pay on this order');
+      return;
+    }
     try {
       setIsLoading(true);
-      
-      // Build notes with extra items details
-      let paymentNotes = data.notes || '';
-      if (extraItems.length > 0) {
-        const extraItemsText = extraItems.map(item => 
-          `${item.name}: ${item.quantity}x @ LKR ${item.price} = LKR ${item.quantity * item.price}`
-        ).join('; ');
-        paymentNotes = paymentNotes 
-          ? `${paymentNotes}\nExtra Items: ${extraItemsText}` 
-          : `Extra Items: ${extraItemsText}`;
-      }
-      
+      const paymentNotes = [
+        remainingAfter > 0 ? `Partial payment - ${formatOrderAmount(remainingAfter)} still due` : null,
+        data.notes || null,
+      ].filter(Boolean).join('\n');
+
       if (paymentMethod === PAYMENT_METHODS.CASH) {
-        // For cash payments, complete immediately
         await addPaymentMutation.mutateAsync({
           id: order._id,
           data: {
@@ -156,10 +135,6 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
             amount: paymentAmount,
             status: 'completed',
             notes: paymentNotes,
-            extraCharges: extraChargesTotal > 0 ? {
-              items: extraItems,
-              total: extraChargesTotal
-            } : undefined,
           },
         });
         onClose();
@@ -168,7 +143,7 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
         if (!data.transactionId) {
           throw new Error('Transaction ID is required for bank transfer');
         }
-        
+
         await addPaymentMutation.mutateAsync({
           id: order._id,
           data: {
@@ -177,10 +152,6 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
             status: 'completed',
             transactionId: data.transactionId,
             notes: paymentNotes,
-            extraCharges: extraChargesTotal > 0 ? {
-              items: extraItems,
-              total: extraChargesTotal
-            } : undefined,
           },
         });
         onClose();
@@ -230,147 +201,86 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
         </div>
       </div>
 
-      {/* Payment Amount Display */}
+      {/* How much is being paid */}
       <div className="space-y-4">
         <h4 className="text-lg font-bold text-gray-900">Payment Amount</h4>
-        
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-blue-800 font-semibold mb-2">Order Balance to Pay:</p>
-              <p className="text-3xl font-black text-blue-900">{formatOrderAmount(order?.balanceAmount || 0)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-blue-700 font-medium">Already Paid:</p>
-              <p className="text-xl font-bold text-green-600">{formatOrderAmount(order?.paidAmount || 0)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Extra Items/Charges Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-md font-medium text-gray-900 flex items-center">
-            <ShoppingBagIcon className="h-5 w-5 mr-2 text-purple-600" />
-            Extra Items (Optional)
-          </h4>
-        </div>
-        
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-          <p className="text-sm text-purple-800 mb-2">
-            Add extra items purchased by customer (hangers, bags, etc.)
-          </p>
-          
-          {/* Quick Add Common Items */}
-          <div className="mb-3">
-            <p className="text-xs font-medium text-purple-900 mb-2">Quick Add:</p>
-            <div className="flex flex-wrap gap-2">
-              {COMMON_EXTRA_ITEMS.map((item, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => addExtraItem(item)}
-                  className="text-xs px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-md transition-colors"
-                >
-                  + {item.name} (LKR {item.price})
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Extra Items List */}
-          {extraItems.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {extraItems.map((item) => (
-                <div key={item.id} className="flex items-center space-x-2 bg-white rounded p-2">
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => updateExtraItem(item.id, 'name', e.target.value)}
-                    placeholder="Item name"
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateExtraItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
-                    min="1"
-                    className="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                  <span className="text-xs text-gray-500">×</span>
-                  <input
-                    type="number"
-                    value={item.price}
-                    onChange={(e) => updateExtraItem(item.id, 'price', parseFloat(e.target.value) || 0)}
-                    step="0.01"
-                    min="0"
-                    placeholder="Price"
-                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  />
-                  <span className="text-sm font-medium text-gray-900 w-24 text-right">
-                    = {formatOrderAmount(item.quantity * item.price)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeExtraItem(item.id)}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              
-              {/* Extra Items Total */}
-              <div className="flex justify-between items-center bg-purple-100 rounded p-2 font-semibold">
-                <span className="text-sm text-purple-900">Extra Items Total:</span>
-                <span className="text-sm text-purple-900">{formatOrderAmount(extraChargesTotal)}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Add Custom Item Button */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             type="button"
-            onClick={() => addExtraItem()}
-            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+            onClick={() => setPaymentMode('full')}
+            className={`p-4 border-2 rounded-xl text-left transition-all ${paymentMode === 'full' ? 'border-green-500 bg-green-50 shadow-md' : 'border-gray-200 hover:border-green-300'}`}
           >
-            <PlusIcon className="h-4 w-4" />
-            <span>Add Custom Item</span>
+            <p className="text-sm font-bold text-gray-900">Pay in full</p>
+            <p className="text-xs text-gray-500 mt-0.5">Settle the whole remaining balance</p>
+            <p className="text-2xl font-black text-green-700 mt-2">{formatOrderAmount(balanceDue)}</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentMode('partial');
+              if (!partialAmount) setValue('amount', '');
+            }}
+            className={`p-4 border-2 rounded-xl text-left transition-all ${paymentMode === 'partial' ? 'border-amber-500 bg-amber-50 shadow-md' : 'border-gray-200 hover:border-amber-300'}`}
+          >
+            <p className="text-sm font-bold text-gray-900">Partial payment</p>
+            <p className="text-xs text-gray-500 mt-0.5">Record an advance or instalment; the rest stays due</p>
+            <p className="text-2xl font-black text-amber-700 mt-2">{paymentMode === 'partial' && paymentAmount > 0 ? formatOrderAmount(paymentAmount) : '—'}</p>
           </button>
         </div>
-      </div>
 
-      {/* Payment Summary with Extra Charges */}
-      {extraChargesTotal > 0 && (
-        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-4">
-          <h4 className="text-md font-semibold text-orange-900 mb-3">💰 Payment Breakdown</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-700">Order Balance:</span>
-              <span className="font-medium text-gray-900">{formatOrderAmount(order?.balanceAmount || 0)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-purple-700">Extra Items:</span>
-              <span className="font-medium text-purple-900">{formatOrderAmount(extraChargesTotal)}</span>
-            </div>
-            <div className="flex justify-between border-t-2 border-orange-300 pt-2 mt-2">
-              <span className="font-bold text-gray-900">Total Payment:</span>
-              <span className="font-bold text-orange-600 text-lg">{formatOrderAmount(paymentAmount)}</span>
+        {paymentMode === 'partial' && (
+          <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+            <label className="block text-sm font-semibold text-amber-900 mb-2">Amount paid now (LKR) *</label>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-start">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  max={balanceDue}
+                  autoFocus
+                  {...register('amount')}
+                  className={`w-full px-4 py-3 text-lg font-bold border-2 rounded-xl focus:outline-none focus:ring-4 ${amountError ? 'border-red-300 focus:ring-red-100' : 'border-amber-300 focus:ring-amber-100 focus:border-amber-500'}`}
+                  placeholder="0"
+                />
+                {amountError && <p className="mt-1 text-sm text-red-600 font-medium">{amountError}</p>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[0.25, 0.5, 0.75].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setValue('amount', Math.round(balanceDue * f))}
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-100"
+                  >
+                    {f * 100}%
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded p-2 mt-3">
-            <p className="text-xs font-medium text-gray-700">After Payment:</p>
-            <p className="text-xs text-gray-600">
-              New Total Paid: {formatOrderAmount((order?.paidAmount || 0) + paymentAmount)}
-            </p>
-            <p className="text-xs text-gray-600">
-              Order will be fully paid
-              {extraChargesTotal > 0 && <span className="text-purple-600"> (includes extra items: +{formatOrderAmount(extraChargesTotal)})</span>}
-            </p>
+        )}
+
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-blue-700 font-medium">Already paid</p>
+              <p className="text-lg font-bold text-gray-800">{formatOrderAmount(order?.paidAmount || 0)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-700 font-medium">Paying now</p>
+              <p className="text-2xl font-black text-blue-900">{formatOrderAmount(paymentAmount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-700 font-medium">Left after this</p>
+              <p className={`text-lg font-bold ${remainingAfter > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {remainingAfter > 0 ? formatOrderAmount(remainingAfter) : '✓ Fully paid'}
+              </p>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       <div className="flex justify-end space-x-4 pt-4 border-t-2 border-gray-200">
         <Button type="button" variant="outline" onClick={onClose} className="px-6 py-3">
@@ -380,15 +290,16 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
           <Button
             type="button"
             onClick={handleSubmit(onSubmit)}
-            disabled={isLoading}
+            disabled={isLoading || !!amountError || paymentAmount <= 0}
             className="px-6 py-3 bg-green-600 hover:bg-green-700"
           >
-            {isLoading ? <LoadingSpinner size="sm" /> : '✓ Complete Cash Payment'}
+            {isLoading ? <LoadingSpinner size="sm" /> : remainingAfter > 0 ? `✓ Record ${formatOrderAmount(paymentAmount)} Cash` : '✓ Complete Cash Payment'}
           </Button>
         ) : (
           <Button
             type="button"
             onClick={() => setPaymentStep('bank_details')}
+            disabled={!!amountError || paymentAmount <= 0}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700"
           >
             Continue to Bank Details →
@@ -400,14 +311,8 @@ const PaymentModal = ({ isOpen, onClose, order }) => {
 
   // Copy to clipboard functions
   const copyBankDetails = () => {
-    let extraItemsText = '';
-    if (extraItems.length > 0) {
-      const itemsList = extraItems.map(item => 
-        `  - ${item.name}: ${item.quantity}x @ LKR ${item.price} = ${formatOrderAmount(item.quantity * item.price)}`
-      ).join('\n');
-      extraItemsText = `\n\nExtra Items:\n${itemsList}\nExtra Total: ${formatOrderAmount(extraChargesTotal)}`;
-    }
-    
+    const extraItemsText = remainingAfter > 0 ? `\n(Partial payment - ${formatOrderAmount(remainingAfter)} remains due)` : '';
+
     const details = `Bank Transfer Details:
 Bank: ${bankAccountDetails.bankName}
 Account Name: ${bankAccountDetails.accountName}
@@ -427,10 +332,7 @@ Please use order number as reference.`;
   };
 
   const copyAmount = () => {
-    let amountText = `Amount: ${formatOrderAmount(paymentAmount)}`;
-    if (extraChargesTotal > 0) {
-      amountText += `\n(Order: ${formatOrderAmount(baseAmount)} + Extra Items: ${formatOrderAmount(extraChargesTotal)})`;
-    }
+    const amountText = `Amount: ${formatOrderAmount(paymentAmount)}`;
     navigator.clipboard.writeText(amountText).then(() => {
       toast.success('Amount copied to clipboard!');
     }).catch(() => {
@@ -452,14 +354,9 @@ Please use order number as reference.`;
   };
 
   const copySMSMessage = () => {
-    const businessName = import.meta.env.VITE_BUSINESS_NAME;
-    
-    let extraItemsText = '';
-    if (extraItems.length > 0) {
-      const itemsList = extraItems.map(item => `${item.name} (${item.quantity}x)`).join(', ');
-      extraItemsText = `\nExtra Items: ${itemsList}\nExtra: ${formatOrderAmount(extraChargesTotal)}`;
-    }
-    
+    const businessName = BUSINESS_NAME;
+    const extraItemsText = remainingAfter > 0 ? `\n(Partial - ${formatOrderAmount(remainingAfter)} remains)` : '';
+
     const smsMessage = `${businessName} - Bank Transfer:
 Bank: ${bankAccountDetails.bankName}
 Acc: ${bankAccountDetails.accountName}
@@ -563,21 +460,9 @@ Use order number as reference.`;
           </button>
         </div>
         <div className="space-y-2">
-          {extraChargesTotal > 0 && (
-            <div className="text-sm">
-              <div className="flex justify-between mb-1">
-                <span className="text-yellow-700">Order Balance:</span>
-                <span className="font-medium text-yellow-900">{formatOrderAmount(baseAmount)}</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-purple-700">Extra Items:</span>
-                <span className="font-medium text-purple-900">{formatOrderAmount(extraChargesTotal)}</span>
-              </div>
-              <div className="border-t border-yellow-300 pt-1"></div>
-            </div>
-          )}
           <p className="text-2xl font-bold text-yellow-800">
             {formatOrderAmount(paymentAmount)}
+            {remainingAfter > 0 && <span className="ml-2 text-sm font-semibold text-amber-700">partial · {formatOrderAmount(remainingAfter)} remains</span>}
           </p>
         </div>
         <p className="text-sm text-yellow-700 mt-1">
@@ -591,8 +476,7 @@ Use order number as reference.`;
             Total Paid: {formatOrderAmount((order?.paidAmount || 0) + paymentAmount)}
           </p>
           <p className="text-xs text-gray-600">
-            New Balance: {formatOrderAmount(Math.max(0, (order?.balanceAmount || 0) - baseAmount))}
-            {extraChargesTotal > 0 && <span className="text-purple-600"> (Extra items: +{formatOrderAmount(extraChargesTotal)})</span>}
+            New Balance: {formatOrderAmount(remainingAfter)}
           </p>
         </div>
       </div>
@@ -710,7 +594,7 @@ Use order number as reference.`;
           disabled={isLoading}
           className="px-6 py-3 bg-green-600 hover:bg-green-700"
         >
-          {isLoading ? <LoadingSpinner size="sm" /> : '✓ Complete Payment'}
+          {isLoading ? <LoadingSpinner size="sm" /> : remainingAfter > 0 ? `✓ Record ${formatOrderAmount(paymentAmount)} Transfer` : '✓ Complete Payment'}
         </Button>
       </div>
     </div>
@@ -808,6 +692,38 @@ Use order number as reference.`;
                 <span className="font-bold text-green-700">
                   {order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}
                 </span>
+              </div>
+            )}
+
+            {/* Express fee */}
+            {order.isExpressService && order.expressServiceFee > 0 && (
+              <div className="flex justify-between items-center bg-blue-50 -mx-4 px-4 py-2 border-l-4 border-blue-500">
+                <span className="text-blue-700 font-medium">⚡ Express Service (1 Day):</span>
+                <span className="font-bold text-blue-700">+ {formatOrderAmount(order.expressServiceFee)}</span>
+              </div>
+            )}
+
+            {/* Extras already on the order (hangers, bags, ...) */}
+            {order.extraCharges?.total > 0 && (
+              <div className="flex justify-between items-center bg-purple-50 -mx-4 px-4 py-2 border-l-4 border-purple-500">
+                <div>
+                  <span className="text-purple-700 font-medium block">Extra Items:</span>
+                  <span className="text-xs text-purple-600">
+                    {(order.extraCharges.items || []).map((i) => `${i.name} × ${i.quantity}`).join(', ')}
+                  </span>
+                </div>
+                <span className="font-bold text-purple-700">+ {formatOrderAmount(order.extraCharges.total)}</span>
+              </div>
+            )}
+
+            {/* Minimum order top-up */}
+            {currentTopUp > 0 && (
+              <div className="flex justify-between items-center bg-amber-50 -mx-4 px-4 py-2 border-l-4 border-amber-500">
+                <div>
+                  <span className="text-amber-700 font-medium block">Minimum order top-up:</span>
+                  <span className="text-xs text-amber-600">Orders are charged at least {formatOrderAmount(pricing.minimumOrderAmount)}</span>
+                </div>
+                <span className="font-bold text-amber-700">+ {formatOrderAmount(currentTopUp)}</span>
               </div>
             )}
 

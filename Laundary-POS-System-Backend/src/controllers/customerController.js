@@ -88,8 +88,7 @@ const getCustomers = async (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       campusId,
-      hasOrders,
-      loyaltyPoints
+      hasOrders
     } = req.query;
     
     // Build query
@@ -114,12 +113,6 @@ const getCustomers = async (req, res) => {
         { campusId: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
-    }
-    
-    // Loyalty points filter
-    if (loyaltyPoints) {
-      const points = parseInt(loyaltyPoints);
-      query.loyaltyPoints = { $gte: points };
     }
     
     // Sort options
@@ -152,11 +145,7 @@ const getCustomers = async (req, res) => {
     // Calculate additional stats
     const stats = {
       totalCustomers: total,
-      studentCustomers: await Customer.countDocuments({ ...query, isStudent: true }),
-      totalLoyaltyPoints: await Customer.aggregate([
-        { $match: query },
-        { $group: { _id: null, total: { $sum: '$loyaltyPoints' } } }
-      ])
+      studentCustomers: await Customer.countDocuments({ ...query, isStudent: true })
     };
     
     res.json({
@@ -331,10 +320,9 @@ const getCustomerOrderHistory = async (req, res) => {
     const { id } = req.params;
     const { page = 1, limit = 10, status, startDate, endDate } = req.query;
     
-    console.log('Getting order history for customer:', id);
     
     // Build order query
-    let orderQuery = { customer: id };
+    let orderQuery = { customer: id, isDeleted: { $ne: true } };
     
     if (status) {
       orderQuery.status = status;
@@ -343,10 +331,12 @@ const getCustomerOrderHistory = async (req, res) => {
     if (startDate || endDate) {
       orderQuery.createdAt = {};
       if (startDate) orderQuery.createdAt.$gte = new Date(startDate);
-      if (endDate) orderQuery.createdAt.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(endDate))) end.setHours(23, 59, 59, 999);
+        orderQuery.createdAt.$lte = end;
+      }
     }
-    
-    console.log('Order query:', JSON.stringify(orderQuery));
     
     // Pagination
     const maxLimit = Math.min(parseInt(limit) || 10, 50);
@@ -359,19 +349,19 @@ const getCustomerOrderHistory = async (req, res) => {
       .skip(skip)
       .limit(maxLimit);
     
-    console.log(`Found ${orders.length} orders for customer ${id}`);
     
     const total = await Order.countDocuments(orderQuery);
-    console.log(`Total orders count: ${total}`);
     
     // Calculate customer analytics
     const analytics = await Order.aggregate([
-      { $match: { customer: new mongoose.Types.ObjectId(id) } },
+      { $match: { customer: new mongoose.Types.ObjectId(id), isDeleted: { $ne: true } } },
       {
         $group: {
           _id: null,
           totalOrders: { $sum: 1 },
           totalSpent: { $sum: '$totalAmount' },
+          outstandingBalance: { $sum: { $cond: [{ $gt: ['$balanceAmount', 0] }, '$balanceAmount', 0] } },
+          lastOrderDate: { $max: '$createdAt' },
           averageOrderValue: { $avg: '$totalAmount' },
           statusBreakdown: {
             $push: '$status'
@@ -380,7 +370,6 @@ const getCustomerOrderHistory = async (req, res) => {
       }
     ]);
     
-    console.log('Analytics result:', analytics);
     
     // Process status breakdown
     let statusStats = {};
@@ -405,6 +394,8 @@ const getCustomerOrderHistory = async (req, res) => {
           totalOrders: analytics[0].totalOrders,
           totalSpent: analytics[0].totalSpent,
           averageOrderValue: Math.round(analytics[0].averageOrderValue * 100) / 100,
+          outstandingBalance: analytics[0].outstandingBalance || 0,
+          lastOrderDate: analytics[0].lastOrderDate,
           statusBreakdown: statusStats
         } : null
       }
@@ -429,7 +420,6 @@ const getCustomerAnalytics = async (req, res) => {
     const { id } = req.params;
     const { period = '30d' } = req.query;
     
-    console.log('Getting analytics for customer:', id);
     
     // Calculate date range based on period
     const endDate = new Date();
@@ -453,6 +443,7 @@ const getCustomerAnalytics = async (req, res) => {
       {
         $match: {
           customer: new mongoose.Types.ObjectId(id),
+          isDeleted: { $ne: true },
           createdAt: { $gte: startDate, $lte: endDate }
         }
       },
@@ -474,6 +465,7 @@ const getCustomerAnalytics = async (req, res) => {
       {
         $match: {
           customer: new mongoose.Types.ObjectId(id),
+          isDeleted: { $ne: true },
           createdAt: { $gte: startDate, $lte: endDate }
         }
       },
@@ -490,15 +482,50 @@ const getCustomerAnalytics = async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1 } }
     ]);
     
-    // Service preferences
-    const servicePreferences = await Order.aggregate([
-      { $match: { customer: new mongoose.Types.ObjectId(id) } },
+    const customerMatch = { customer: new mongoose.Types.ObjectId(id), isDeleted: { $ne: true } };
+
+    // Lifetime totals (all orders, not limited to the period)
+    const [lifetime] = await Order.aggregate([
+      { $match: customerMatch },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalSpent: { $sum: '$totalAmount' },
+          outstandingBalance: { $sum: { $cond: [{ $gt: ['$balanceAmount', 0] }, '$balanceAmount', 0] } },
+          lastOrderDate: { $max: '$createdAt' },
+          firstOrderDate: { $min: '$createdAt' }
+        }
+      }
+    ]);
+
+    // Weight / pieces across all items
+    const [volume] = await Order.aggregate([
+      { $match: customerMatch },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: null,
+          totalWeight: { $sum: { $ifNull: ['$items.weight', 0] } },
+          // Only count pieces for items that were priced per piece (weight-based lines carry quantity 1)
+          totalPieces: { $sum: { $cond: [{ $gt: ['$items.weight', 0] }, 0, { $ifNull: ['$items.quantity', 0] }] } }
+        }
+      }
+    ]);
+
+    // Service usage: every service this customer has ever used
+    const serviceUsage = await Order.aggregate([
+      { $match: customerMatch },
       { $unwind: '$items' },
       {
         $group: {
           _id: '$items.service',
-          totalQuantity: { $sum: '$items.quantity' },
-          totalSpent: { $sum: '$items.totalPrice' }
+          serviceName: { $first: '$items.serviceName' },
+          orders: { $addToSet: '$_id' },
+          totalQuantity: { $sum: { $cond: [{ $gt: ['$items.weight', 0] }, 0, { $ifNull: ['$items.quantity', 0] }] } },
+          totalWeight: { $sum: { $ifNull: ['$items.weight', 0] } },
+          totalSpent: { $sum: '$items.totalPrice' },
+          lastUsed: { $max: '$createdAt' }
         }
       },
       {
@@ -509,17 +536,18 @@ const getCustomerAnalytics = async (req, res) => {
           as: 'service'
         }
       },
-      { $unwind: '$service' },
       {
         $project: {
-          serviceName: '$service.name',
-          serviceCategory: '$service.category',
+          serviceName: { $ifNull: [{ $arrayElemAt: ['$service.name', 0] }, '$serviceName'] },
+          color: { $arrayElemAt: ['$service.color', 0] },
+          orderCount: { $size: '$orders' },
           totalQuantity: 1,
-          totalSpent: 1
+          totalWeight: { $round: ['$totalWeight', 2] },
+          totalSpent: { $round: ['$totalSpent', 2] },
+          lastUsed: 1
         }
       },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 5 }
+      { $sort: { totalSpent: -1 } }
     ]);
     
     const responseData = {
@@ -532,82 +560,28 @@ const getCustomerAnalytics = async (req, res) => {
           averageOrderValue: 0,
           totalDiscounts: 0
         },
+        lifetime: {
+          totalOrders: lifetime?.totalOrders || 0,
+          totalSpent: lifetime?.totalSpent || 0,
+          outstandingBalance: lifetime?.outstandingBalance || 0,
+          lastOrderDate: lifetime?.lastOrderDate || null,
+          firstOrderDate: lifetime?.firstOrderDate || null,
+          totalWeight: Math.round((volume?.totalWeight || 0) * 100) / 100,
+          totalPieces: volume?.totalPieces || 0
+        },
         monthlyTrend,
-        servicePreferences,
+        serviceUsage,
+        // Kept for older clients
+        servicePreferences: serviceUsage.slice(0, 5),
         dateRange: { startDate, endDate }
       }
     };
-    
-    console.log('Sending analytics response:', JSON.stringify(responseData, null, 2));
     
     res.json(responseData);
   } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customer analytics',
-      error: error.message
-    });
-  }
-};
-
-/**
- * @desc    Update customer loyalty points
- * @route   PUT /api/customers/:id/loyalty-points
- * @access  Admin & Cashier
- */
-const updateLoyaltyPoints = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { points, action = 'add', reason } = req.body;
-    
-    if (!points || points <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid points amount is required'
-      });
-    }
-    
-    const customer = await Customer.findById(id);
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-    
-    let newPoints = customer.loyaltyPoints;
-    if (action === 'add') {
-      newPoints += points;
-    } else if (action === 'subtract') {
-      newPoints = Math.max(0, newPoints - points);
-    } else if (action === 'set') {
-      newPoints = points;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid action. Must be add, subtract, or set'
-      });
-    }
-    
-    customer.loyaltyPoints = newPoints;
-    await customer.save();
-    
-    res.json({
-      success: true,
-      message: 'Loyalty points updated successfully',
-      data: {
-        customerId: customer._id,
-        previousPoints: customer.loyaltyPoints - (action === 'add' ? points : (action === 'subtract' ? -points : 0)),
-        newPoints: customer.loyaltyPoints,
-        action,
-        points,
-        reason
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update loyalty points',
       error: error.message
     });
   }
@@ -683,8 +657,8 @@ const getCustomerStats = async (req, res) => {
           _id: null,
           totalCustomers: { $sum: 1 },
           studentCustomers: { $sum: { $cond: ['$isStudent', 1, 0] } },
-          totalLoyaltyPoints: { $sum: '$loyaltyPoints' },
-          totalSpent: { $sum: '$totalSpent' }
+          totalSpent: { $sum: '$totalSpent' },
+          totalOrders: { $sum: '$totalOrders' }
         }
       }
     ]);
@@ -713,43 +687,29 @@ const getCustomerStats = async (req, res) => {
     const overview = stats[0] || {
       totalCustomers: 0,
       studentCustomers: 0,
-      totalLoyaltyPoints: 0,
-      totalSpent: 0
+      totalSpent: 0,
+      totalOrders: 0
     };
+    delete overview._id;
 
-    // Calculate additional stats for frontend
-    const averageLoyaltyPoints = overview.totalCustomers > 0 
-      ? Math.round(overview.totalLoyaltyPoints / overview.totalCustomers) 
-      : 0;
-
-    // Calculate loyalty tiers
-    const loyaltyTierStats = await Customer.aggregate([
-      {
-        $bucket: {
-          groupBy: '$loyaltyPoints',
-          boundaries: [0, 100, 500, 1000, Infinity],
-          default: 'Bronze',
-          output: {
-            count: { $sum: 1 }
-          }
-        }
-      }
+    // Customers who have ordered at least once, and the biggest spenders
+    const [returningCustomers, topCustomers] = await Promise.all([
+      Customer.countDocuments({ totalOrders: { $gte: 1 } }),
+      Customer.find({ totalSpent: { $gt: 0 } })
+        .select('fullName phoneNumber email totalOrders totalSpent')
+        .sort({ totalSpent: -1 })
+        .limit(5)
+        .lean()
     ]);
-
-    const vipCustomers = loyaltyTierStats.find(tier => tier._id >= 1000)?.count || 0;
-    const goldCustomers = loyaltyTierStats.find(tier => tier._id >= 500 && tier._id < 1000)?.count || 0;
-    const silverCustomers = loyaltyTierStats.find(tier => tier._id >= 100 && tier._id < 500)?.count || 0;
-    const bronzeCustomers = loyaltyTierStats.find(tier => tier._id >= 0 && tier._id < 100)?.count || 0;
 
     res.json({
       success: true,
       data: {
         ...overview,
-        averageLoyaltyPoints,
-        vipCustomers,
-        goldCustomers,
-        silverCustomers,
-        bronzeCustomers,
+        totalRevenue: overview.totalSpent,
+        averageSpend: overview.totalCustomers > 0 ? Math.round(overview.totalSpent / overview.totalCustomers) : 0,
+        returningCustomers,
+        topCustomers,
         recentCustomers,
         topCampuses: campusStats
       }
@@ -787,7 +747,7 @@ const searchCustomers = async (req, res) => {
         { email: { $regex: q, $options: 'i' } }
       ]
     })
-    .select('fullName phoneNumber campusId email totalOrders totalSpent loyaltyPoints')
+    .select('fullName phoneNumber campusId email totalOrders totalSpent isStudent address')
     .limit(parseInt(limit))
     .sort({ totalSpent: -1 });
     
@@ -973,7 +933,6 @@ module.exports = {
   deleteCustomer,
   getCustomerOrderHistory,
   getCustomerAnalytics,
-  updateLoyaltyPoints,
   bulkUpdateCustomers,
   getCustomerStats,
   searchCustomers,

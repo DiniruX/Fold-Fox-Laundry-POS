@@ -9,7 +9,6 @@ import {
   MapPinIcon,
   AcademicCapIcon,
   BuildingOfficeIcon,
-  StarIcon,
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -48,10 +47,6 @@ const schema = yup.object({
     street: yup.string().optional(),
     city: yup.string().optional(),
   }),
-  loyaltyPoints: yup
-    .number()
-    .min(0, 'Loyalty points cannot be negative')
-    .optional(),
 });
 
 const CustomerFormPage = () => {
@@ -90,7 +85,6 @@ const CustomerFormPage = () => {
         street: '',
         city: '',
       },
-      loyaltyPoints: 0,
     },
   });
 
@@ -145,7 +139,6 @@ const CustomerFormPage = () => {
           street: customer.address?.street || '',
           city: customer.address?.city || '',
         },
-        loyaltyPoints: customer.loyaltyPoints || 0,
       });
       setIsStudent(customer.isStudent || false);
     }
@@ -156,10 +149,7 @@ const CustomerFormPage = () => {
     setMessage({ type: '', text: '' });
 
     // Prepare data for submission
-    const submitData = {
-      ...data,
-      loyaltyPoints: parseInt(data.loyaltyPoints) || 0,
-    };
+    const submitData = { ...data };
 
     mutation.mutate(submitData);
     setIsLoading(false);
@@ -281,19 +271,6 @@ const CustomerFormPage = () => {
                   </p>
                 </div>
 
-                {isEditing && (
-                  <div>
-                    <Input
-                      {...register('loyaltyPoints')}
-                      label="Loyalty Points"
-                      type="number"
-                      placeholder="0"
-                      error={errors.loyaltyPoints?.message}
-                      leftIcon={<StarIcon className="h-5 w-5 text-gray-400" />}
-                    />
-                    <p className="mt-1 text-xs text-gray-500">Adjust customer loyalty points</p>
-                  </div>
-                )}
               </div>
             </div>
 

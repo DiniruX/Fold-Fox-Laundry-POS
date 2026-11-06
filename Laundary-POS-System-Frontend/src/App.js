@@ -26,6 +26,10 @@ import Users from './pages/Users';
 import UserDetailsPage from './pages/UserDetailsPage';
 import UserFormPage from './pages/UserFormPage';
 import Reports from './pages/Reports';
+import OtherItems from './pages/OtherItems';
+import Discounts from './pages/Discounts';
+import Expenses from './pages/Expenses';
+import Deliveries from './pages/Deliveries';
 
 // Constants
 import { ROUTES } from './constants';
@@ -78,6 +82,7 @@ function App() {
 
                 {/* Order routes - accessible by admin and cashier */}
                 <Route path="/orders" element={<Orders />} />
+                <Route path={ROUTES.DELIVERIES} element={<Deliveries />} />
                 <Route path="/orders/new" element={<OrderFormPage />} />
                 <Route path="/orders/edit/:id" element={<OrderFormPage />} />
                 <Route path="/orders/:id" element={<OrderDetailsPage />} />
@@ -112,6 +117,32 @@ function App() {
                   element={
                     <AdminRoute>
                       <ServiceDetailsPage />
+                    </AdminRoute>
+                  }
+                />
+
+                {/* Other items, discounts and expenses - admin only */}
+                <Route
+                  path={ROUTES.OTHER_ITEMS}
+                  element={
+                    <AdminRoute>
+                      <OtherItems />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path={ROUTES.DISCOUNTS}
+                  element={
+                    <AdminRoute>
+                      <Discounts />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path={ROUTES.EXPENSES}
+                  element={
+                    <AdminRoute>
+                      <Expenses />
                     </AdminRoute>
                   }
                 />

@@ -15,16 +15,20 @@ import {
 import { ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { getServiceReport, exportServiceToExcel } from '../../services/reportService';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import Button from '../ui/Button';
 import toast from 'react-hot-toast';
 import { formatOrderAmount } from '../../services/orderService';
+import { getClothingCategoryLabel, getStatusLabel } from '../../services/serviceService';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4', '#EC4899', '#14B8A6'];
+
+// "wash + dry" → "Wash + Dry"
+const formatSteps = (steps) => (steps ? steps.split(' + ').map(getStatusLabel).join(' + ') : '');
 
 const ServiceReport = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -37,12 +41,13 @@ const ServiceReport = () => {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
       const response = await getServiceReport(params);
       setData(response.serviceData || []);
+      setCategoryData(response.categoryData || []);
     } catch (error) {
       toast.error('Failed to fetch service report');
       console.error('Error fetching service report:', error);
@@ -54,7 +59,7 @@ const ServiceReport = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
@@ -75,19 +80,14 @@ const ServiceReport = () => {
     color: COLORS[index % COLORS.length],
   }));
 
-  const categoryData = data.reduce((acc, item) => {
-    const category = item.serviceCategory || 'Unknown';
-    if (!acc[category]) {
-      acc[category] = { name: category, value: 0 };
-    }
-    acc[category].value += item.totalRevenue;
-    return acc;
-  }, {});
-
-  const categoryChartData = Object.values(categoryData);
+  const categoryChartData = categoryData.map((item) => ({
+    name: getClothingCategoryLabel(item._id),
+    value: item.totalRevenue,
+  }));
 
   const totalRevenue = data.reduce((sum, item) => sum + (item.totalRevenue || 0), 0);
-  const totalQuantity = data.reduce((sum, item) => sum + item.totalQuantity, 0);
+  const totalQuantity = data.reduce((sum, item) => sum + (item.totalQuantity || 0), 0);
+  const totalWeight = data.reduce((sum, item) => sum + (item.totalWeight || 0), 0);
   const totalOrders = data.reduce((sum, item) => sum + item.orderCount, 0);
 
   const formatCurrency = (amount) => formatOrderAmount(amount ?? 0);
@@ -121,6 +121,7 @@ const ServiceReport = () => {
               <input
                 type="date"
                 value={filters.endDate}
+                min={filters.startDate || undefined}
                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                 className="border-0 px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500 rounded"
               />
@@ -166,6 +167,7 @@ const ServiceReport = () => {
             <div>
               <p className="text-sm text-gray-600">Total Items</p>
               <p className="text-2xl font-bold text-gray-900">{totalQuantity}</p>
+              {totalWeight > 0 && <p className="text-xs text-gray-500">+ {totalWeight.toFixed(1)} kg weighed</p>}
             </div>
             <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
               <span className="text-blue-600 text-xl">📦</span>
@@ -219,7 +221,7 @@ const ServiceReport = () => {
 
             {/* Revenue by Category */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Category</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Clothing Category</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -248,7 +250,7 @@ const ServiceReport = () => {
               <div key={index} className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
                 <div>
                   <p className="text-sm text-gray-600 font-medium">{item.serviceName}</p>
-                  <p className="text-xs text-gray-500 mb-2">{item.serviceCategory}</p>
+                  <p className="text-xs text-gray-500 mb-2">{formatSteps(item.serviceCategory)}</p>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div>
                       <p className="text-xs text-gray-500">Revenue</p>
@@ -280,10 +282,10 @@ const ServiceReport = () => {
                       Service Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                      Process Steps
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Quantity
+                      Quantity / Weight
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total Revenue
@@ -306,10 +308,10 @@ const ServiceReport = () => {
                         {item.serviceName || 'Unknown'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.serviceCategory || 'N/A'}
+                        {formatSteps(item.serviceCategory) || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.totalQuantity}
+                        {item.totalQuantity} pcs{item.totalWeight > 0 ? ` · ${Number(item.totalWeight).toFixed(1)} kg` : ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(item.totalRevenue)}

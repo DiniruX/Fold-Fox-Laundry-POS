@@ -10,7 +10,6 @@ const {
   deleteCustomer,
   getCustomerOrderHistory,
   getCustomerAnalytics,
-  updateLoyaltyPoints,
   bulkUpdateCustomers,
   getCustomerStats,
   searchCustomers,
@@ -29,7 +28,7 @@ const { validateRegistration } = require('../middleware/registrationValidation')
 /**
  * Customer Routes - Role-based access control
  * Admin & Cashier: Full access to customer operations
- * Features: Advanced search, analytics, bulk operations, loyalty management
+ * Features: Advanced search, analytics, bulk operations
  */
 
 // PUBLIC ROUTES (No authentication required)
@@ -70,9 +69,6 @@ router.get('/:id', requireCashierOrAdmin, getCustomerById);
 
 // Create new customer (Admin & Cashier)
 router.post('/', requireCashierOrAdmin, validateCustomerCreate, createCustomer);
-
-// Update customer loyalty points (Admin & Cashier)
-router.put('/:id/loyalty-points', requireCashierOrAdmin, updateLoyaltyPoints);
 
 // Update customer (Admin & Cashier)
 router.put('/:id', requireCashierOrAdmin, validateCustomerUpdate, updateCustomer);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FiBarChart2 } from 'react-icons/fi';
 import { 
@@ -79,10 +79,17 @@ const Users = () => {
     setSelectedUserName('');
   };
 
-  // Handle stats update from UserList
-  const handleStatsUpdate = (stats) => {
-    setUserStats(stats);
-  };
+  // Handle stats update from UserList (stable identity; skip no-op updates)
+  const handleStatsUpdate = useCallback((stats) => {
+    setUserStats((prev) => (
+      prev.totalUsers === stats.totalUsers &&
+      prev.activeUsers === stats.activeUsers &&
+      prev.inactiveUsers === stats.inactiveUsers &&
+      prev.adminUsers === stats.adminUsers
+        ? prev
+        : stats
+    ));
+  }, []);
 
   const tabs = [
     { id: 'list', name: 'User List', icon: UserGroupIcon },

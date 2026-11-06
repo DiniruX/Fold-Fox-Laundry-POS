@@ -531,8 +531,13 @@ const OrderList = ({ onEditOrder, onViewDetails, onProcessPayment, onDeleteOrder
                           </span>
                         )}
                         {order.deliveryRequired && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
-                            🚚 Delivery{order.deliveryCharges === 0 && order.deliveryDistance > 0 && order.deliveryDistance <= 40 ? ' (FREE)' : ''}
+                          <span
+                            className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800"
+                            title={order.expectedDeliveryDate ? `Deliver on ${new Date(order.expectedDeliveryDate).toLocaleDateString()}` : 'Delivery'}
+                          >
+                            🚚 {order.expectedDeliveryDate
+                              ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              : 'Delivery'}
                           </span>
                         )}
                         {!order.pickupRequired && !order.deliveryRequired && (

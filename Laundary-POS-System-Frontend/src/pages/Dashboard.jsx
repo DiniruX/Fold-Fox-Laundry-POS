@@ -11,16 +11,21 @@ import {
   SparklesIcon,
   ArrowTrendingUpIcon,
   ShieldCheckIcon,
+  BanknotesIcon,
+  ReceiptPercentIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import { ROUTES } from '../constants';
 import { reportsAPI, ordersAPI } from '../services/api';
+import { getOrderStatusLabel, getOrderStatusColor } from '../services/orderService';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, isAdmin, isCashier } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -44,7 +49,7 @@ const Dashboard = () => {
         // Fetch dashboard stats and recent orders in parallel
         const [statsResponse, ordersResponse] = await Promise.all([
           reportsAPI.getDashboardStats(),
-          ordersAPI.getAll({ limit: 3, sort: '-createdAt' })
+          ordersAPI.getAll({ limit: 3, sortBy: 'createdAt', sortOrder: 'desc' })
         ]);
 
         // Process stats data
@@ -58,15 +63,19 @@ const Dashboard = () => {
           activeOrders: statsData.pendingOrders || 0,
           pendingOrders: statsData.pendingOrders || 0,
           completedOrders: 0, // Can be calculated if needed
+          monthExpenses: statsData.monthExpenses || 0,
+          todayExpenses: statsData.todayExpenses || 0,
+          todayDeliveries: statsData.todayDeliveries || 0,
         });
 
-        // Process recent orders data
-        const ordersData = ordersResponse.data.orders || [];
+        // Process recent orders data (API shape: { success, data: { orders } })
+        const ordersData = ordersResponse.data?.data?.orders || ordersResponse.data?.orders || [];
         setRecentOrders(ordersData.map(order => ({
           id: order.orderNumber,
-          customer: order.customer?.fullName || 'Unknown Customer',
+          _id: order._id,
+          customer: order.customer?.fullName || order.customerInfo?.name || 'Unknown Customer',
           amount: order.totalAmount,
-          status: order.orderStatus,
+          status: order.status,
           createdAt: order.createdAt,
         })));
 
@@ -94,27 +103,9 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  const getStatusColor = (status) => {
-    const colors = {
-      received: 'bg-blue-100 text-blue-800',
-      washing: 'bg-yellow-100 text-yellow-800',
-      drying: 'bg-orange-100 text-orange-800',
-      ready_for_pickup: 'bg-green-100 text-green-800',
-      delivered: 'bg-green-100 text-green-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      received: 'Received',
-      washing: 'Washing',
-      drying: 'Drying',
-      ready_for_pickup: 'Ready for Pickup',
-      delivered: 'Delivered',
-    };
-    return labels[status] || status;
-  };
+  // Same labels/colours as the orders list
+  const getStatusColor = getOrderStatusColor;
+  const getStatusLabel = getOrderStatusLabel;
 
   const statCards = [
     {
@@ -153,13 +144,34 @@ const Dashboard = () => {
       subtitle: 'In progress',
       trend: '-3%',
     },
+    {
+      name: 'Deliveries Today',
+      value: stats.todayDeliveries || 0,
+      icon: TruckIcon,
+      color: '#14b8a6',
+      bgColor: 'rgba(20, 184, 166, 0.1)',
+      subtitle: 'Scheduled for today',
+      trend: 'View calendar',
+      href: ROUTES.DELIVERIES,
+    },
+    ...(isAdmin() ? [
+      {
+        name: 'This Month Expenses',
+        value: formatCurrency(stats.monthExpenses || 0),
+        icon: BanknotesIcon,
+        color: '#ef4444',
+        bgColor: 'rgba(239, 68, 68, 0.1)',
+        subtitle: `Net ${formatCurrency((stats.totalRevenue || 0) - (stats.monthExpenses || 0))} after expenses`,
+        trend: `${formatCurrency(stats.todayExpenses || 0)} today`,
+      },
+    ] : []),
   ];
 
   const quickActions = [
     {
       name: 'Create Order',
       description: 'Start a new laundry order',
-      href: ROUTES.ORDERS,
+      href: ROUTES.NEW_ORDER,
       icon: SparklesIcon,
       color: '#fe7f2d',
       bgColor: 'rgba(254, 127, 45, 0.1)',
@@ -188,6 +200,22 @@ const Dashboard = () => {
         icon: UserGroupIcon,
         color: '#f59e0b',
         bgColor: 'rgba(245, 158, 11, 0.1)',
+      },
+      {
+        name: 'Record Expense',
+        description: 'Salaries & running costs',
+        href: ROUTES.EXPENSES,
+        icon: BanknotesIcon,
+        color: '#ef4444',
+        bgColor: 'rgba(239, 68, 68, 0.1)',
+      },
+      {
+        name: 'Discounts',
+        description: 'Manage offers & promotions',
+        href: ROUTES.DISCOUNTS,
+        icon: ReceiptPercentIcon,
+        color: '#14b8a6',
+        bgColor: 'rgba(20, 184, 166, 0.1)',
       },
     ] : []),
     {
@@ -417,9 +445,10 @@ const Dashboard = () => {
             {recentOrders.length > 0 ? (
               <ul className="space-y-3">
                 {recentOrders.map((order) => (
-                  <li 
-                    key={order.id} 
-                    className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+                  <li
+                    key={order.id}
+                    className="p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                    onClick={() => order._id && navigate(`/orders/${order._id}`)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1">

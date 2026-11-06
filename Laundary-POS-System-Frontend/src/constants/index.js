@@ -1,6 +1,16 @@
 // API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Business identity (used in SMS templates, receipts, bank details)
+export const BUSINESS_NAME = import.meta.env.VITE_BUSINESS_NAME || 'Fold Fox Laundry';
+
+// Pricing fallbacks, used only until the server's pricing config has loaded.
+// The backend (MINIMUM_ORDER_AMOUNT / EXPRESS_SERVICE_FEE) is authoritative.
+export const DEFAULT_PRICING = {
+  minimumOrderAmount: Number(import.meta.env.VITE_MINIMUM_ORDER_AMOUNT) || 400,
+  expressServiceFee: Number(import.meta.env.VITE_EXPRESS_SERVICE_FEE) || 100,
+};
+
 // User Roles
 export const ROLES = {
   ADMIN: 'admin',
@@ -16,10 +26,49 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   CUSTOMERS: '/customers',
   ORDERS: '/orders',
+  NEW_ORDER: '/orders/new',
+  DELIVERIES: '/deliveries',
   SERVICES: '/services',
+  OTHER_ITEMS: '/other-items',
+  DISCOUNTS: '/discounts',
+  EXPENSES: '/expenses',
   STAFF: '/staff',
   USERS: '/users',
   REPORTS: '/reports'
+};
+
+// Extra ("other") item categories
+export const EXTRA_ITEM_CATEGORIES = {
+  HANGER: 'hanger',
+  PACKAGING: 'packaging',
+  CONSUMABLE: 'consumable',
+  OTHER: 'other'
+};
+
+// Expense categories
+export const EXPENSE_CATEGORIES = {
+  SALARY: 'salary',
+  UTILITIES: 'utilities',
+  RENT: 'rent',
+  SUPPLIES: 'supplies',
+  MAINTENANCE: 'maintenance',
+  TRANSPORT: 'transport',
+  MARKETING: 'marketing',
+  OTHER: 'other'
+};
+
+// Discount types & audiences
+export const DISCOUNT_TYPES = {
+  PERCENTAGE: 'percentage',
+  FIXED: 'fixed'
+};
+
+export const DISCOUNT_CUSTOMER_TYPES = {
+  ALL: 'all',
+  STUDENT: 'student',
+  NEW: 'new',
+  REGULAR: 'regular',
+  CAMPAIGN: 'campaign'
 };
 
 // Order Status - Simplified Workflow

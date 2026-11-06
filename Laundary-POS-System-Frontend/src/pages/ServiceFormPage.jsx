@@ -26,6 +26,12 @@ const ServiceFormPage = () => {
   const [clothingPriceTypes, setClothingPriceTypes] = useState({}); // New: priceType per category
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  // Which categories appear in THIS service's pricing grid (none of this deletes anything system-wide):
+  // existing services start with just their priced categories; new ones show everything.
+  const [showOnlyPriced, setShowOnlyPriced] = useState(false);
+  const [removedCategories, setRemovedCategories] = useState([]);
+  const [addedCategories, setAddedCategories] = useState([]);
+  const [categoryToAdd, setCategoryToAdd] = useState('');
 
   const { categories: clothingCategories } = useClothingCategories();
   const createCategoryMutation = useCreateClothingCategory();
@@ -88,6 +94,10 @@ const ServiceFormPage = () => {
       };
       reset(formData);
       setClothingPrices(dataToLoad.clothingPrices || {});
+      // Existing service: start with only the categories it actually prices
+      setShowOnlyPriced(Object.keys(dataToLoad.clothingPrices || {}).length > 0);
+      setRemovedCategories([]);
+      setAddedCategories([]);
       // Convert Map to Object if necessary
       let priceTypesObj = dataToLoad.clothingPriceTypes;
       if (dataToLoad.clothingPriceTypes instanceof Map) {
@@ -107,8 +117,43 @@ const ServiceFormPage = () => {
       });
       setClothingPrices({});
       setClothingPriceTypes(defaultPriceTypes);
+      setShowOnlyPriced(false);
+      setRemovedCategories([]);
+      setAddedCategories([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, duplicateFrom, reset]);
+
+  // Remove a category from this service only: drop its price and hide the row
+  const handleRemoveCategoryFromService = (category) => {
+    setClothingPrices((prev) => {
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
+    setClothingPriceTypes((prev) => {
+      const next = { ...prev };
+      delete next[category];
+      return next;
+    });
+    setRemovedCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
+    setAddedCategories((prev) => prev.filter((k) => k !== category));
+  };
+
+  const handleRestoreCategory = (category) => {
+    if (!category) return;
+    setRemovedCategories((prev) => prev.filter((k) => k !== category));
+    setAddedCategories((prev) => (prev.includes(category) ? prev : [...prev, category]));
+    setCategoryToAdd('');
+  };
+
+  const isCategoryVisible = (key) => {
+    if (removedCategories.includes(key)) return false;
+    if (!showOnlyPriced) return true;
+    return clothingPrices[key] !== undefined || addedCategories.includes(key);
+  };
+  const visibleCategories = clothingCategories.filter((c) => isCategoryVisible(c.key));
+  const hiddenCategories = clothingCategories.filter((c) => !isCategoryVisible(c.key));
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -368,11 +413,17 @@ const ServiceFormPage = () => {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="text-md font-medium text-gray-900 mb-3">Clothing Category Pricing</h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    Set different prices and price types (per kg or per piece) for each clothing category. At least one category must have pricing before continuing.
+                    Set a price type (per kg or per piece) and a price for each clothing category this service offers.
+                    Remove categories this service doesn’t handle with the ✕ on the card; they stay available for other services.
                   </p>
+                  {visibleCategories.length === 0 && (
+                    <div className="p-4 mb-4 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 text-center">
+                      No categories on this service yet. Add one below.
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {clothingCategories.map(({ key: category, label, isCustom }) => (
-                      <div key={category} className="space-y-2">
+                    {visibleCategories.map(({ key: category, label, isCustom }) => (
+                      <div key={category} className={`space-y-2 p-3 rounded-lg border-2 ${clothingPrices[category] !== undefined ? 'border-green-200 bg-white' : 'border-gray-200 bg-white'}`}>
                         <div className="flex items-center justify-between">
                           <label className="block text-sm font-medium text-gray-700">
                             {label}
@@ -382,17 +433,27 @@ const ServiceFormPage = () => {
                               </span>
                             )}
                           </label>
-                          {isCustom && (
+                          <div className="flex items-center gap-1">
+                            {isCustom && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCategory({ key: category, label })}
+                                disabled={deleteCategoryMutation.isPending}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                title={`Delete "${label}" from the whole system`}
+                              >
+                                Delete everywhere
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handleDeleteCategory({ key: category, label })}
-                              disabled={deleteCategoryMutation.isPending}
-                              className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
-                              title={`Delete "${label}" category`}
+                              onClick={() => handleRemoveCategoryFromService(category)}
+                              className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              title={`Remove "${label}" from this service`}
                             >
                               <XMarkIcon className="h-4 w-4" />
                             </button>
-                          )}
+                          </div>
                         </div>
                         {/* Price Type Selector */}
                         <select
@@ -416,6 +477,32 @@ const ServiceFormPage = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* Re-add a category removed from this service */}
+                  {hiddenCategories.length > 0 && (
+                    <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Add category to this service:</label>
+                      <select
+                        value={categoryToAdd}
+                        onChange={(e) => handleRestoreCategory(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                      >
+                        <option value="">Select a category…</option>
+                        {hiddenCategories.map(({ key, label, isCustom }) => (
+                          <option key={key} value={key}>{label}{isCustom ? ' (custom)' : ''}</option>
+                        ))}
+                      </select>
+                      {hiddenCategories.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => { setRemovedCategories([]); setShowOnlyPriced(false); }}
+                          className="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-100 whitespace-nowrap"
+                        >
+                          Show all
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Add custom category */}
                   <div className="mt-4">
@@ -474,8 +561,8 @@ const ServiceFormPage = () => {
                   </div>
 
                   <p className="text-xs text-gray-500 mt-2">
-                    Select price type (per kg or per piece) and enter the price for each clothing category you offer.
-                    Custom categories are shared across all services.
+                    Only categories with a price are saved for this service. Custom categories are shared across all services;
+                    “Delete everywhere” removes one from the whole system.
                   </p>
                 </div>
                 

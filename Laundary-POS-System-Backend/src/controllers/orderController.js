@@ -1,8 +1,23 @@
 const Order = require('../models/Order');
 const Customer = require('../models/Customer');
 const Service = require('../models/Service');
+const Discount = require('../models/Discount');
 const { generateOrderNumber } = require('../utils/helpers');
 const { sendBankAccountDetails, sendOrderConfirmation, sendPickupScheduledEmail } = require('../services/notificationService');
+const {
+  buildExtraCharges,
+  resolveDiscount,
+  repriceExistingDiscount
+} = require('../utils/orderPricing');
+const { MINIMUM_ORDER_AMOUNT, EXPRESS_SERVICE_FEE, minimumOrderAdjustment, round2 } = require('../config/pricing');
+
+// Fields a client may never set directly on an order
+const PROTECTED_ORDER_FIELDS = [
+  'orderNumber', 'customer', 'createdBy', '_id', 'orderPhase', 'itemsConfirmed',
+  'confirmationHistory', 'paidAmount', 'balanceAmount', 'totalAmount', 'subtotal',
+  'payments', 'isDeleted', 'discount', 'discountAmount', 'extraCharges',
+  'expressServiceFee', 'confirmedAt', 'confirmedBy', 'actualDeliveryDate'
+];
 
 // Helper function to get priceType for a category (with fallback to legacy priceType)
 const getCategoryPriceType = (service, category) => {
@@ -84,8 +99,11 @@ const createOrder = async (req, res) => {
       deliveryAddress,
       specialInstructions,
       tags,
-      loyaltyPointsUsed = 0,
-      isExpressService = false
+      isExpressService = false,
+      expectedDeliveryDate,
+      extraItems = [],
+      discountId,
+      noDiscount = false
     } = req.body;
 
     // Validate required fields
@@ -109,6 +127,18 @@ const createOrder = async (req, res) => {
         success: false,
         message: 'Delivery address is required when delivery is enabled'
       });
+    }
+
+    // Delivery date (required for delivery orders so it shows on the deliveries calendar)
+    let parsedDeliveryDate = null;
+    if (deliveryRequired) {
+      parsedDeliveryDate = expectedDeliveryDate ? new Date(expectedDeliveryDate) : null;
+      if (!parsedDeliveryDate || Number.isNaN(parsedDeliveryDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'A valid delivery date is required when delivery is enabled'
+        });
+      }
     }
 
     // Validate and enrich order items with service details
@@ -214,33 +244,29 @@ const createOrder = async (req, res) => {
     // Calculate totals
     const subtotal = enrichedItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const taxAmount = 0; // Can be configured later
-    
-    // Get applicable discount from customer
-    const applicableDiscount = customer.getApplicableDiscount();
-    let discountAmount = 0;
-    let discountInfo = {
-      type: 'none',
-      percentage: 0,
-      amount: 0,
-      description: 'No Discount',
-      code: null,
-      isFirstOrderDiscount: false
-    };
-    
-    if (applicableDiscount && applicableDiscount.percentage > 0) {
-      discountAmount = (subtotal * applicableDiscount.percentage) / 100;
-      discountInfo = {
-        type: applicableDiscount.type,
-        percentage: applicableDiscount.percentage,
-        amount: discountAmount,
-        description: applicableDiscount.description,
-        code: applicableDiscount.code,
-        isFirstOrderDiscount: applicableDiscount.type === 'campaign'
-      };
+
+    // Extra items (hangers, bags, ...) priced from the "Other Items" catalog,
+    // and the discount (admin promotion chosen by the cashier, or the
+    // customer's own student / campaign entitlement)
+    let extraCharges;
+    let discountInfo;
+    try {
+      extraCharges = await buildExtraCharges(extraItems);
+      discountInfo = await resolveDiscount({
+        customer,
+        subtotal,
+        discountId,
+        noDiscount: noDiscount === true || noDiscount === 'true'
+      });
+    } catch (pricingError) {
+      if (pricingError.statusCode === 400) {
+        return res.status(400).json({ success: false, message: pricingError.message });
+      }
+      throw pricingError;
     }
-    
+    const discountAmount = discountInfo.amount;
+
     // Calculate express service fee (1 Day Service)
-    const EXPRESS_SERVICE_FEE = 100; // LKR 100 for 1 day express service
     const expressServiceFee = isExpressService ? EXPRESS_SERVICE_FEE : 0;
     
     // Get pickup and delivery charges from request (or use defaults)
@@ -268,7 +294,9 @@ const createOrder = async (req, res) => {
       }
     }
     
-    const totalAmount = subtotal + taxAmount + expressServiceFee + pickupCharges + deliveryCharges - discountAmount;
+    const baseTotal = round2(subtotal + taxAmount + expressServiceFee + extraCharges.total + pickupCharges + deliveryCharges - discountAmount);
+    const minimumAdjustment = minimumOrderAdjustment(baseTotal);
+    const totalAmount = round2(baseTotal + minimumAdjustment);
 
     // Use customer address as default if not provided
     const finalPickupAddress = pickupAddress || customer.address || {};
@@ -313,34 +341,39 @@ const createOrder = async (req, res) => {
       taxAmount,
       isExpressService,
       expressServiceFee,
+      extraCharges,
       pickupCharges,
       deliveryCharges,
       deliveryDistance,
       discount: discountInfo, // Add discount object
       discountAmount,
+      minimumOrderAdjustment: minimumAdjustment,
       totalAmount,
       paidAmount: 0,
       balanceAmount: totalAmount,
       specialInstructions,
       tags: tags || [],
-      loyaltyPointsUsed,
-      loyaltyPointsEarned: Math.floor(totalAmount), // 1 point per rupee
+      expectedDeliveryDate: deliveryRequired ? parsedDeliveryDate : null,
       createdBy: req.user.id,
       status: initialStatus,
       orderPhase: initialPhase,
       itemsConfirmed: itemsConfirmed,
       isEditable: true
     };
-    
+
     const order = await Order.create(orderData);
+
+    // Track how often a promotion is used
+    if (discountInfo.type === 'promotion' && discountInfo.promotion) {
+      Discount.updateOne({ _id: discountInfo.promotion }, { $inc: { usageCount: 1 } }).catch(() => {});
+    }
 
     // Log the created order phase for debugging
     console.log(`[Order Creation] Order ${order.orderNumber} created with phase: ${order.orderPhase}, status: ${order.status}, itemsConfirmed: ${order.itemsConfirmed}`);
 
-    // Update customer's order count and loyalty points
+    // Update customer's order count and spend
     await Customer.findByIdAndUpdate(customer._id, {
       $inc: { 
-        'loyaltyPoints': -loyaltyPointsUsed + Math.floor(totalAmount),
         'totalOrders': 1,
         'totalSpent': totalAmount
       }
@@ -379,6 +412,7 @@ const createOrder = async (req, res) => {
               estimatedTime: totalEstimatedTime,
               subtotal: order.subtotal,
               discountAmount: order.discountAmount,
+              minimumOrderAdjustment: order.minimumOrderAdjustment,
               taxAmount: order.taxAmount,
               expressServiceFee: order.expressServiceFee,
               extraCharges: order.extraCharges,
@@ -399,7 +433,7 @@ const createOrder = async (req, res) => {
       message: 'Order created successfully',
       data: {
         order: await Order.findById(order._id)
-          .populate('customer', 'fullName phoneNumber address loyaltyPoints')
+          .populate('customer', 'fullName phoneNumber address')
           .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes statuses')
           .populate('createdBy', 'name')
       }
@@ -411,6 +445,56 @@ const createOrder = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Deliveries calendar: delivery orders in a date window, plus unscheduled ones
+const getDeliverySchedule = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const base = {
+      isDeleted: { $ne: true },
+      deliveryRequired: true,
+      orderPhase: { $ne: 'cancelled' }
+    };
+
+    const range = {};
+    if (startDate) {
+      const s = new Date(startDate);
+      if (!Number.isNaN(s.getTime())) range.$gte = s;
+    }
+    if (endDate) {
+      const e = new Date(endDate);
+      if (!Number.isNaN(e.getTime())) range.$lte = e;
+    }
+
+    const select = 'orderNumber customerInfo deliveryAddress status orderPhase totalAmount balanceAmount paidAmount expectedDeliveryDate actualDeliveryDate items.serviceName items.quantity items.weight createdAt specialInstructions';
+
+    const [scheduled, unscheduled] = await Promise.all([
+      Order.find({ ...base, expectedDeliveryDate: Object.keys(range).length ? range : { $ne: null } })
+        .select(select)
+        .sort({ expectedDeliveryDate: 1, createdAt: 1 })
+        .lean(),
+      Order.find({ ...base, status: { $ne: 'complete' }, $or: [{ expectedDeliveryDate: null }, { expectedDeliveryDate: { $exists: false } }] })
+        .select(select)
+        .sort({ createdAt: 1 })
+        .lean()
+    ]);
+
+    res.json({ success: true, data: { scheduled, unscheduled } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch delivery schedule', error: error.message });
+  }
+};
+
+// Pricing rules the POS needs for live estimates (server stays authoritative)
+const getPricingConfig = (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      minimumOrderAmount: MINIMUM_ORDER_AMOUNT,
+      expressServiceFee: EXPRESS_SERVICE_FEE
+    }
+  });
 };
 
 // Get all orders with filtering and pagination
@@ -535,7 +619,7 @@ const getOrder = async (req, res) => {
     const { id } = req.params;
 
     const order = await Order.findById(id)
-      .populate('customer', 'fullName phoneNumber address loyaltyPoints')
+      .populate('customer', 'fullName phoneNumber address')
       .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'name')
       .populate('assignedStaff', 'name');
@@ -593,14 +677,14 @@ const updateOrder = async (req, res) => {
       console.log(`Order ${existingOrder.orderNumber} reverted to draft for re-confirmation after edit`);
     }
 
-    // Remove fields that shouldn't be updated directly
-    delete updateData.orderNumber;
-    delete updateData.customer;
-    delete updateData.createdBy;
-    delete updateData._id;
-    delete updateData.orderPhase; // Phase is managed by system
-    delete updateData.itemsConfirmed; // Managed by confirmItems
-    delete updateData.confirmationHistory; // Managed by confirmItems
+    // Pricing inputs are handled explicitly below, never assigned directly
+    const { extraItems, discountId, noDiscount } = updateData;
+    delete updateData.extraItems;
+    delete updateData.discountId;
+    delete updateData.noDiscount;
+
+    // Remove fields that shouldn't be updated directly (system-managed or money fields)
+    PROTECTED_ORDER_FIELDS.forEach(field => delete updateData[field]);
 
     // If items are being updated, enrich them with service details
     if (updateData.items && Array.isArray(updateData.items)) {
@@ -689,6 +773,61 @@ const updateOrder = async (req, res) => {
 
     // Apply the updates to existing order
     Object.assign(existingOrder, updateData);
+
+    // Express fee follows the express flag
+    if (updateData.isExpressService !== undefined) {
+      existingOrder.expressServiceFee = updateData.isExpressService ? EXPRESS_SERVICE_FEE : 0;
+    }
+    if (updateData.pickupRequired === false) existingOrder.pickupCharges = 0;
+    if (updateData.deliveryRequired === false) {
+      existingOrder.deliveryCharges = 0;
+      existingOrder.expectedDeliveryDate = null;
+    }
+    if (updateData.expectedDeliveryDate !== undefined) {
+      const d = updateData.expectedDeliveryDate ? new Date(updateData.expectedDeliveryDate) : null;
+      if (d && Number.isNaN(d.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid delivery date' });
+      }
+      existingOrder.expectedDeliveryDate = existingOrder.deliveryRequired ? d : null;
+    }
+    if (existingOrder.deliveryRequired && !existingOrder.expectedDeliveryDate) {
+      return res.status(400).json({ success: false, message: 'A delivery date is required when delivery is enabled' });
+    }
+
+    // Re-price extras and the discount against the (possibly new) subtotal
+    try {
+      if (extraItems !== undefined) {
+        existingOrder.extraCharges = await buildExtraCharges(extraItems);
+      }
+
+      const newSubtotal = existingOrder.items.reduce((sum, item) => sum + (Number(item.totalPrice) || 0), 0);
+      const customer = await Customer.findById(existingOrder.customer);
+      const wantsNoDiscount = noDiscount === true || noDiscount === 'true';
+
+      let discountInfo;
+      if (discountId || wantsNoDiscount) {
+        discountInfo = await resolveDiscount({ customer, subtotal: newSubtotal, discountId, noDiscount: wantsNoDiscount });
+      } else {
+        discountInfo = await repriceExistingDiscount(existingOrder, customer, newSubtotal);
+      }
+
+      const previousPromotion = existingOrder.discount?.promotion ? String(existingOrder.discount.promotion) : null;
+      const nextPromotion = discountInfo.promotion ? String(discountInfo.promotion) : null;
+      if (previousPromotion !== nextPromotion) {
+        if (previousPromotion) Discount.updateOne({ _id: previousPromotion }, { $inc: { usageCount: -1 } }).catch(() => {});
+        if (nextPromotion) Discount.updateOne({ _id: nextPromotion }, { $inc: { usageCount: 1 } }).catch(() => {});
+      }
+
+      existingOrder.discount = discountInfo;
+      existingOrder.discountAmount = discountInfo.amount;
+    } catch (pricingError) {
+      if (pricingError.statusCode === 400) {
+        return res.status(400).json({ success: false, message: pricingError.message });
+      }
+      throw pricingError;
+    }
+
+    existingOrder.recalculateTotal();
     await existingOrder.save();
 
     // Reload with populated data
@@ -816,6 +955,21 @@ const addPayment = async (req, res) => {
       });
     }
 
+    // Amount must be a positive number and may not exceed what is still owed
+    // (extras added with this payment, if any, raise the balance first)
+    const paymentAmount = Math.round((Number(amount) || 0) * 100) / 100;
+    if (paymentAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Payment amount must be greater than 0' });
+    }
+    const pendingExtras = extraCharges?.items?.length ? Number(extraCharges.total) || 0 : 0;
+    const maxPayable = Math.round((order.balanceAmount + pendingExtras) * 100) / 100;
+    if (paymentAmount > maxPayable + 0.009) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment of ${paymentAmount} exceeds the remaining balance of ${maxPayable}`
+      });
+    }
+
     // Handle extra charges (e.g., hangers, bags, etc.)
     if (extraCharges && extraCharges.items && extraCharges.items.length > 0) {
       // Add or update extra charges on the order
@@ -839,7 +993,7 @@ const addPayment = async (req, res) => {
     // For cash payments, no transaction ID needed
     const paymentData = {
       method,
-      amount,
+      amount: paymentAmount,
       transactionId: method === 'cash' ? null : transactionId,
       notes,
       status,
@@ -934,11 +1088,10 @@ const deleteOrder = async (req, res) => {
       phase: order.orderPhase
     });
 
-    // If order had loyalty points, revert them from customer
-    if (order.customer && order.loyaltyPointsEarned > 0) {
-      await Customer.findByIdAndUpdate(order.customer._id, {
+    // Keep the customer's order count and spend in step
+    if (order.customer) {
+      await Customer.findByIdAndUpdate(order.customer._id || order.customer, {
         $inc: { 
-          loyaltyPoints: -order.loyaltyPointsEarned,
           totalOrders: -1,
           totalSpent: -order.totalAmount
         }
@@ -1216,32 +1369,14 @@ const confirmOrderItems = async (req, res) => {
     const subtotal = confirmedItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const taxAmount = 0;
     
-    // Get fresh customer data for discount calculation
+    // Get fresh customer data and re-price the discount the order was placed
+    // with (promotion, customer entitlement or explicit "no discount")
     const customer = await Customer.findById(order.customer._id);
-    const applicableDiscount = customer.getApplicableDiscount();
-    
-    let discountAmount = 0;
-    let discountInfo = {
-      type: 'none',
-      percentage: 0,
-      amount: 0,
-      description: 'No Discount',
-      code: null,
-      isFirstOrderDiscount: false
-    };
-    
-    if (applicableDiscount && applicableDiscount.percentage > 0) {
-      discountAmount = (subtotal * applicableDiscount.percentage) / 100;
-      discountInfo = {
-        type: applicableDiscount.type,
-        percentage: applicableDiscount.percentage,
-        amount: discountAmount,
-        description: applicableDiscount.description,
-        code: applicableDiscount.code,
-        isFirstOrderDiscount: applicableDiscount.type === 'campaign'
-      };
-      
-      console.log(`[Confirm Items] ${applicableDiscount.description}: ${applicableDiscount.percentage}% = LKR ${discountAmount.toFixed(2)}`);
+    const discountInfo = await repriceExistingDiscount(order, customer, subtotal);
+    const discountAmount = discountInfo.amount;
+
+    if (discountAmount > 0) {
+      console.log(`[Confirm Items] ${discountInfo.description}: LKR ${discountAmount.toFixed(2)}`);
     }
     
     // Include express service fee and extra charges in total
@@ -1249,14 +1384,10 @@ const confirmOrderItems = async (req, res) => {
     const extraChargesTotal = order.extraCharges?.total || 0;
     const pickupCharges = Number(order.pickupCharges) || 0;
     const deliveryCharges = Number(order.deliveryCharges) || 0;
-    const totalAmount = subtotal 
-      + taxAmount 
-      + expressServiceFee 
-      + extraChargesTotal 
-      + pickupCharges 
-      + deliveryCharges 
-      - discountAmount;
-    const balanceAmount = totalAmount - (order.paidAmount || 0);
+    const baseTotal = round2(subtotal + taxAmount + expressServiceFee + extraChargesTotal + pickupCharges + deliveryCharges - discountAmount);
+    const minimumAdjustment = minimumOrderAdjustment(baseTotal);
+    const totalAmount = round2(baseTotal + minimumAdjustment);
+    const balanceAmount = round2(totalAmount - (order.paidAmount || 0));
 
     const originalTotal = order.totalAmount;
     const difference = totalAmount - originalTotal;
@@ -1288,9 +1419,9 @@ const confirmOrderItems = async (req, res) => {
     order.taxAmount = taxAmount;
     order.discount = discountInfo; // Update discount object
     order.discountAmount = discountAmount;
+    order.minimumOrderAdjustment = minimumAdjustment;
     order.totalAmount = totalAmount;
     order.balanceAmount = balanceAmount;
-    order.loyaltyPointsEarned = Math.floor(totalAmount);
     
     // Mark items as confirmed
     order.itemsConfirmed = true;
@@ -1328,6 +1459,7 @@ const confirmOrderItems = async (req, res) => {
             estimatedTime: totalEstimatedTime,
             subtotal: order.subtotal,
             discountAmount: order.discountAmount,
+            minimumOrderAdjustment: order.minimumOrderAdjustment,
             taxAmount: order.taxAmount,
             expressServiceFee: order.expressServiceFee,
             extraCharges: order.extraCharges,
@@ -1344,7 +1476,7 @@ const confirmOrderItems = async (req, res) => {
 
     // Reload order with populated data
     const updatedOrder = await Order.findById(id)
-      .populate('customer', 'fullName phoneNumber email address loyaltyPoints')
+      .populate('customer', 'fullName phoneNumber email address')
       .populate('items.service', 'name priceType basePrice clothingPrices clothingPriceTypes estimatedTime statuses')
       .populate('createdBy', 'name')
       .populate('confirmedBy', 'name');
@@ -1502,6 +1634,8 @@ const sendReceiptToCustomer = async (req, res) => {
 };
 
 module.exports = {
+  getPricingConfig,
+  getDeliverySchedule,
   createOrder,
   getOrders,
   getOrder,

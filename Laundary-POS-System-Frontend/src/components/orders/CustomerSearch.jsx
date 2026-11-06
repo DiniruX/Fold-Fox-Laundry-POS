@@ -6,27 +6,6 @@ import Input from '../ui/Input';
 
 const MIN_SEARCH_LENGTH = 2;
 
-const DEFAULT_CUSTOMERS = [
-  {
-    _id: 'demo-admin',
-    fullName: 'Admin Account',
-    phoneNumber: '0771234567',
-    email: 'admin@laundry.com',
-    loyaltyPoints: 0,
-    totalOrders: 0,
-    isStudent: false,
-  },
-  {
-    _id: 'demo-cashier',
-    fullName: 'Cashier Account',
-    phoneNumber: '0779876543',
-    email: 'cashier@laundry.com',
-    loyaltyPoints: 0,
-    totalOrders: 0,
-    isStudent: false,
-  },
-];
-
 const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -57,7 +36,7 @@ const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
         setErrorMessage(response.error || 'Failed to fetch customers. Please try again.');
       } else {
         const data = response.customers || [];
-        setCustomers(data.length > 0 ? data : DEFAULT_CUSTOMERS);
+        setCustomers(data);
         setShowResults(true);
       }
     } catch (error) {
@@ -178,12 +157,10 @@ const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
                     
                     {/* Stats */}
                     <div className="text-right flex-shrink-0">
-                      <div className="flex items-center space-x-1 text-yellow-600">
-                        <span className="text-sm font-bold">⭐ {customer.loyaltyPoints || 0}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {customer.totalOrders || 0} orders
-                      </p>
+                      <p className="text-sm font-bold text-gray-700">{customer.totalOrders || 0} orders</p>
+                      {customer.totalSpent > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">LKR {Number(customer.totalSpent).toLocaleString('en-LK')} spent</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -214,9 +191,9 @@ const CustomerSearch = ({ onSelectCustomer, selectedCustomer }) => {
                 <p className="text-xs text-green-700 mt-0.5">
                   {formatPhoneNumber(selectedCustomer.phoneNumber || '')}
                 </p>
-                {selectedCustomer.loyaltyPoints > 0 && (
+                {selectedCustomer.totalOrders > 0 && (
                   <p className="text-xs text-green-600 mt-1">
-                    ⭐ {selectedCustomer.loyaltyPoints} loyalty points • {selectedCustomer.totalOrders || 0} orders
+                    {selectedCustomer.totalOrders} previous order{selectedCustomer.totalOrders === 1 ? '' : 's'}
                   </p>
                 )}
               </div>

@@ -33,7 +33,7 @@ const CustomerReport = () => {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
       params.limit = filters.limit;
@@ -51,7 +51,7 @@ const CustomerReport = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
       params.limit = filters.limit;
@@ -107,6 +107,7 @@ const CustomerReport = () => {
               <input
                 type="date"
                 value={filters.endDate}
+                min={filters.startDate || undefined}
                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                 className="border-0 px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500 rounded"
               />

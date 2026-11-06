@@ -6,7 +6,6 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
-  StarIcon,
   UserGroupIcon,
   AcademicCapIcon,
   Squares2X2Icon,
@@ -27,7 +26,7 @@ import { formatCurrency, formatDate, getInitials, capitalize } from '../../utils
 
 const MIN_SEARCH_LENGTH = 2;
 
-const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSelectedCustomer }) => {
+const CustomerList = ({ onCustomerSelect, onCreateOrder, preSelectedCustomer }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -35,7 +34,6 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
   const [filters, setFilters] = useState({
     isStudent: '',
-    loyaltyTier: '',
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
@@ -177,20 +175,6 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
   };
 
 
-  const getLoyaltyTierColor = (points) => {
-    if (points >= 1000) return 'bg-purple-100 text-purple-800';
-    if (points >= 500) return 'bg-blue-100 text-blue-800';
-    if (points >= 100) return 'bg-green-100 text-green-800';
-    return 'bg-gray-100 text-gray-800';
-  };
-
-  const getLoyaltyTierName = (points) => {
-    if (points >= 1000) return 'VIP';
-    if (points >= 500) return 'Gold';
-    if (points >= 100) return 'Silver';
-    return 'Bronze';
-  };
-
   if (isLoading && !customersData) {
     return <LoadingSpinner size="lg" text="Loading customers..." className="py-12" />;
   }
@@ -312,7 +296,7 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
               <option value="fullName-asc">🔤 Name A-Z</option>
               <option value="fullName-desc">🔤 Name Z-A</option>
               <option value="totalSpent-desc">💰 Highest Spent</option>
-              <option value="loyaltyPoints-desc">⭐ Most Loyalty Points</option>
+              <option value="totalOrders-desc">📦 Most Orders</option>
             </select>
           </div>
         </div>
@@ -386,10 +370,11 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
                             Student
                           </span>
                         )}
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLoyaltyTierColor(customer.loyaltyPoints || 0)}`}>
-                          <StarIcon className="h-3 w-3 mr-1" />
-                          {getLoyaltyTierName(customer.loyaltyPoints || 0)}
-                        </span>
+                        {customer.totalOrders > 0 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                            {customer.totalOrders} order{customer.totalOrders === 1 ? '' : 's'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -477,7 +462,7 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
                 <div className="col-span-2">Contact</div>
                 <div className="col-span-1">Type</div>
                 <div className="col-span-2">Orders & Spent</div>
-                <div className="col-span-2">Loyalty</div>
+                <div className="col-span-2">Last Updated</div>
                 <div className="col-span-2">Actions</div>
               </div>
             </div>
@@ -552,21 +537,10 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
                       </p>
                     </div>
 
-                    {/* Loyalty */}
+                    {/* Last activity */}
                     <div className="col-span-2">
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getLoyaltyTierColor(
-                            customer.loyaltyPoints || 0
-                          )}`}
-                        >
-                          <StarIcon className="h-3 w-3 mr-1" />
-                          {getLoyaltyTierName(customer.loyaltyPoints || 0)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {customer.loyaltyPoints || 0} points
-                      </p>
+                      <p className="text-sm text-gray-700">{formatDate(customer.updatedAt || customer.createdAt)}</p>
+                      <p className="text-xs text-gray-500 mt-1">Joined {formatDate(customer.createdAt)}</p>
                     </div>
 
                     {/* Priority Actions */}
@@ -606,16 +580,6 @@ const CustomerList = ({ onCustomerSelect, onLoyaltyManage, onCreateOrder, preSel
                             title="Edit Customer"
                           >
                             <PencilIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onLoyaltyManage && onLoyaltyManage(customer);
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-yellow-50 text-gray-500 hover:text-yellow-700 transition-colors"
-                            title="Manage Loyalty"
-                          >
-                            <StarIcon className="h-4 w-4" />
                           </button>
                           <button
                             onClick={(e) => {

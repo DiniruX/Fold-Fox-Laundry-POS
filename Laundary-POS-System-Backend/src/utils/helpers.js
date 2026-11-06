@@ -117,11 +117,6 @@ const getDateRangeQuery = (startDate, endDate, field = 'createdAt') => {
   return query;
 };
 
-// Calculate loyalty points
-const calculateLoyaltyPoints = (amount, pointsPerRupee = 1) => {
-  return Math.floor(amount / pointsPerRupee);
-};
-
 // Check if user has permission
 const hasPermission = (user, permission) => {
   return user.role === 'admin' || user.permissions.includes(permission);
@@ -178,7 +173,6 @@ module.exports = {
   getSortOptions,
   getSearchQuery,
   getDateRangeQuery,
-  calculateLoyaltyPoints,
   hasPermission,
   generateQRCodeData,
   getClothingCategoryLabel,

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { PrinterIcon, EnvelopeIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { formatOrderNumber, formatOrderDate, formatOrderAmount, getOrderStatusLabel } from '../../services/orderService';
 import { ordersAPI } from '../../services/api';
+import { BUSINESS_NAME } from '../../constants';
 import { getClothingCategoryLabel } from '../../services/serviceService';
 import toast from 'react-hot-toast';
 
@@ -137,7 +138,7 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
         <div ref={receiptRef} className="bg-white p-6 border border-gray-200 rounded-lg">
           {/* Header */}
           <div className="header">
-            <div className="business-name">{import.meta.env.VITE_BUSINESS_NAME}</div>
+            <div className="business-name">{BUSINESS_NAME}</div>
             <div className="business-address">
               {import.meta.env.VITE_BUSINESS_ADDRESS}<br />
               Phone: {import.meta.env.VITE_BUSINESS_PHONE}<br />
@@ -261,7 +262,7 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
             {/* Delivery - Always show if required */}
             {order.deliveryRequired && (
               <div className="total-row" style={{ color: '#16a34a', fontWeight: 'bold' }}>
-                <span>🚚 Delivery{order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}:</span>
+                <span>🚚 Delivery{order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}{order.expectedDeliveryDate ? ` · ${new Date(order.expectedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}:</span>
                 <span>{order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}</span>
               </div>
             )}
@@ -299,6 +300,12 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
               <div className="total-row" style={{ fontSize: '10px', color: '#666', fontStyle: 'italic' }}>
                 <span>Discount Code: {order.discount.code}</span>
                 <span>{order.discount.isFirstOrderDiscount ? '(First Order Special)' : ''}</span>
+              </div>
+            )}
+            {order.minimumOrderAdjustment > 0 && (
+              <div className="total-row" style={{ color: '#b45309' }}>
+                <span>Minimum order top-up:</span>
+                <span>+{formatOrderAmount(order.minimumOrderAdjustment)}</span>
               </div>
             )}
             <div className="total-row final-total">
@@ -357,7 +364,7 @@ const ReceiptModal = ({ isOpen, onClose, order }) => {
 
           {/* Footer */}
           <div className="footer">
-            <div>Thank you for choosing {import.meta.env.VITE_BUSINESS_NAME}!</div>
+            <div>Thank you for choosing {BUSINESS_NAME}!</div>
             <div>Please keep this receipt for your records.</div>
             <div>For inquiries, call {import.meta.env.VITE_BUSINESS_PHONE}</div>
           </div>

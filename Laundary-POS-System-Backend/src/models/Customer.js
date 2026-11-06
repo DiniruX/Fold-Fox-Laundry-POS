@@ -96,10 +96,6 @@ const customerSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  loyaltyPoints: {
-    type: Number,
-    default: 0
-  },
   notes: String
 }, {
   timestamps: true

@@ -1,5 +1,6 @@
 // Payment service for handling payment-related operations
 import { ordersAPI } from './api';
+import { BUSINESS_NAME } from '../constants';
 import toast from 'react-hot-toast';
 
 /**
@@ -98,7 +99,7 @@ export const getBankAccountDetails = () => {
   // This could be fetched from a configuration service or database
   return {
     bankName: import.meta.env.VITE_BANK_NAME,
-    accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || import.meta.env.VITE_BUSINESS_NAME,
+    accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || BUSINESS_NAME,
     accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER,
     branch: import.meta.env.VITE_BANK_BRANCH,
     swiftCode: import.meta.env.VITE_BANK_SWIFT_CODE,

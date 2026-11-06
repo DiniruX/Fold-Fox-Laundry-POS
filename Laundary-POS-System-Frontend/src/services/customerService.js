@@ -192,22 +192,6 @@ export const customerService = {
     }
   },
 
-  // Update loyalty points
-  updateLoyaltyPoints: async (id, pointsData) => {
-    try {
-      const response = await customersAPI.updateLoyaltyPoints(id, pointsData);
-      return {
-        success: true,
-        data: response.data,
-        message: 'Loyalty points updated successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to update loyalty points',
-      };
-    }
-  },
 
   // Bulk update customers
   bulkUpdateCustomers: async (updateData) => {

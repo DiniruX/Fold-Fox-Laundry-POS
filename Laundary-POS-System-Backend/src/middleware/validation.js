@@ -92,6 +92,28 @@ const validateOrder = [
     .optional()
     .isMongoId()
     .withMessage('Valid customer ID is required'),
+  body('extraItems')
+    .optional()
+    .isArray()
+    .withMessage('Extra items must be an array'),
+  body('extraItems.*.itemId')
+    .isMongoId()
+    .withMessage('Valid item ID is required for each extra item'),
+  body('extraItems.*.quantity')
+    .isInt({ min: 0 })
+    .withMessage('Extra item quantity must be a non-negative integer'),
+  body('discountId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('Valid discount ID is required'),
+  body('noDiscount')
+    .optional()
+    .isBoolean()
+    .withMessage('noDiscount must be a boolean'),
+  body('expectedDeliveryDate')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('Delivery date must be a valid date'),
   body('customerInfo.name')
     .if(body('customerId').not().exists())
     .notEmpty()

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/dinirusandipa/Documents/FoldFox/Fox-Fold-Laundary-POS/Laundary-POS-System-Backend/src && grep -n \"isActive\\\\|isDeleted\" models/Customer.js; echo \"cust-isActive-done\"; grep -n \"category\" models/Service.js; echo svc-done; grep -n \"orderStatus\\\\|orderPhase:\" models/Order.js; echo ---; grep -n \"register-from-landing\\\\|registerFromLanding\\\\|loyalty\\\\|bulk\" routes/customers.js; grep -n \"strictQuery\" -r . ../*.js 2>/dev/null | head)",
+      "Read(//Users/dinirusandipa/Documents/FoldFox/**)",
+      "Bash(awk -F= '/^VITE_/{v=$2; printf \"%s: len=%d placeholder_like=%s\\\\n\",$1,length\\(v\\),\\(v ~ /your|example|xxx|<|placeholder/i\\)?\"yes\":\"no\"}' ENV_TEMPLATE.txt)",
+      "Bash(awk -F: '{print $NF}')"
+    ]
+  }
+}

@@ -61,12 +61,13 @@ const CustomerAnalytics = () => {
       percentage: stats.totalCustomers > 0 ? Math.round((stats.studentCustomers / stats.totalCustomers) * 100) : 0,
     },
     {
-      title: 'Average Loyalty Points',
-      value: Math.round(stats.averageLoyaltyPoints || 0),
+      title: 'Returning Customers',
+      value: stats.returningCustomers || 0,
       icon: StarIcon,
       color: 'bg-yellow-500',
-      change: stats.loyaltyGrowth || 0,
-      changeType: stats.loyaltyGrowth >= 0 ? 'increase' : 'decrease',
+      change: 0,
+      changeType: 'increase',
+      percentage: stats.totalCustomers > 0 ? Math.round(((stats.returningCustomers || 0) / stats.totalCustomers) * 100) : 0,
     },
     {
       title: 'Total Revenue',
@@ -78,33 +79,6 @@ const CustomerAnalytics = () => {
     },
   ];
 
-  const loyaltyTiers = [
-    {
-      name: 'VIP',
-      minPoints: 1000,
-      customers: stats.vipCustomers || 0,
-      color: 'bg-purple-100 text-purple-800',
-    },
-    {
-      name: 'Gold',
-      minPoints: 500,
-      customers: stats.goldCustomers || 0,
-      color: 'bg-blue-100 text-blue-800',
-    },
-    {
-      name: 'Silver',
-      minPoints: 100,
-      customers: stats.silverCustomers || 0,
-      color: 'bg-green-100 text-green-800',
-    },
-    {
-      name: 'Bronze',
-      minPoints: 0,
-      customers: stats.bronzeCustomers || 0,
-      color: 'bg-gray-100 text-gray-800',
-    },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -112,7 +86,7 @@ const CustomerAnalytics = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customer Analytics</h1>
           <p className="text-gray-600">
-            Insights into your customer base and loyalty program
+            Insights into your customer base and spending
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -171,53 +145,14 @@ const CustomerAnalytics = () => {
         })}
       </div>
 
-      {/* Loyalty Tiers Distribution */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-medium text-gray-900">Loyalty Tiers Distribution</h3>
-          <ChartBarIcon className="h-6 w-6 text-gray-400" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {loyaltyTiers.map((tier) => {
-            const percentage = stats.totalCustomers > 0 
-              ? Math.round((tier.customers / stats.totalCustomers) * 100) 
-              : 0;
-            
-            return (
-              <div key={tier.name} className="text-center">
-                <div className="mb-2">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${tier.color}`}>
-                    <StarIcon className="h-4 w-4 mr-1" />
-                    {tier.name}
-                  </span>
-                </div>
-                <p className="text-2xl font-semibold text-gray-900">{tier.customers}</p>
-                <p className="text-sm text-gray-500">{percentage}% of customers</p>
-                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${
-                      tier.name === 'VIP' ? 'bg-purple-500' :
-                      tier.name === 'Gold' ? 'bg-blue-500' :
-                      tier.name === 'Silver' ? 'bg-green-500' :
-                      'bg-gray-500'
-                    }`}
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Customers by Loyalty */}
+        {/* Top Customers by Spend */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Top Loyalty Customers</h3>
-          {stats.topLoyaltyCustomers && stats.topLoyaltyCustomers.length > 0 ? (
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Top Customers by Spend</h3>
+          {stats.topCustomers && stats.topCustomers.length > 0 ? (
             <div className="space-y-3">
-              {stats.topLoyaltyCustomers.slice(0, 5).map((customer, index) => (
+              {stats.topCustomers.slice(0, 5).map((customer, index) => (
                 <div key={customer._id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
@@ -225,20 +160,18 @@ const CustomerAnalytics = () => {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{customer.fullName}</p>
-                      <p className="text-xs text-gray-500">{customer.email}</p>
+                      <p className="text-xs text-gray-500">{customer.phoneNumber}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{customer.loyaltyPoints} pts</p>
-                    <p className="text-xs text-gray-500">
-                      {formatCurrency(customer.totalSpent)}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900">{formatCurrency(customer.totalSpent || 0)}</p>
+                    <p className="text-xs text-gray-500">{customer.totalOrders || 0} orders</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No loyalty data available</p>
+            <p className="text-sm text-gray-500">No orders yet</p>
           )}
         </div>
 
@@ -276,9 +209,9 @@ const CustomerAnalytics = () => {
             ))
           ) : (
             <>
-              <p>• Focus on increasing customer loyalty through targeted promotions</p>
+              <p>• Returning customers are your most valuable segment; follow up with those who haven't ordered recently</p>
               <p>• Student customers represent a significant portion of your base</p>
-              <p>• Consider implementing tier-based rewards to encourage higher spending</p>
+              <p>• Use Discounts to run targeted offers for new or returning customers</p>
             </>
           )}
         </div>

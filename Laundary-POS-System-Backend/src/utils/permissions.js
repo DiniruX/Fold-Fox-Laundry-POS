@@ -7,6 +7,9 @@ const ROLE_PERMISSIONS = {
     orders: ['create', 'read', 'update', 'delete'],
     services: ['create', 'read', 'update', 'delete'],
     staff: ['create', 'read', 'update', 'delete'],
+    extraItems: ['create', 'read', 'update', 'delete'],
+    discounts: ['create', 'read', 'update', 'delete'],
+    expenses: ['create', 'read', 'update', 'delete'],
     reports: ['read']
   },
   cashier: {
@@ -14,6 +17,9 @@ const ROLE_PERMISSIONS = {
     customers: ['create', 'read', 'update', 'delete'],
     orders: ['create', 'read', 'update', 'delete'],
     services: ['read'],
+    // Needed to build orders: add-on prices and live offers
+    extraItems: ['read'],
+    discounts: ['read'],
     reports: ['read']
   }
 };

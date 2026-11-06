@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ordersAPI } from './api';
+import { DEFAULT_PRICING } from '../constants';
 
 // Query keys
 export const ORDER_QUERY_KEYS = {
@@ -8,6 +9,30 @@ export const ORDER_QUERY_KEYS = {
   ORDER: 'order',
   ORDER_ANALYTICS: 'orderAnalytics',
   ORDER_STATS: 'orderStats',
+  PRICING_CONFIG: 'pricingConfig',
+};
+
+/**
+ * Server pricing rules (minimum order, express fee). Falls back to the
+ * frontend defaults until loaded so estimates never show blank.
+ */
+export const usePricingConfig = () => {
+  const query = useQuery({
+    queryKey: [ORDER_QUERY_KEYS.PRICING_CONFIG],
+    queryFn: () => ordersAPI.getPricingConfig(),
+    select: (response) => response.data.data,
+    staleTime: 60 * 60 * 1000,
+  });
+  return { ...query, pricing: { ...DEFAULT_PRICING, ...(query.data || {}) } };
+};
+
+/**
+ * Top-up needed so an order reaches the minimum (mirrors the server rule).
+ */
+export const calculateMinimumOrderAdjustment = (baseTotal, minimumOrderAmount = DEFAULT_PRICING.minimumOrderAmount) => {
+  const base = Number(baseTotal) || 0;
+  if (base <= 0 || base >= minimumOrderAmount) return 0;
+  return Math.round((minimumOrderAmount - base) * 100) / 100;
 };
 
 // React Query hooks
@@ -333,6 +358,8 @@ export const orderValidation = {
 };
 
 export default {
+  usePricingConfig,
+  calculateMinimumOrderAdjustment,
   useOrders,
   useOrder,
   useOrderAnalytics,

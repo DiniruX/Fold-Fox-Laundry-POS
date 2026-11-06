@@ -97,7 +97,6 @@ export const customersAPI = {
   delete: (id) => api.delete(`/customers/${id}`),
   getOrderHistory: (id, params) => api.get(`/customers/${id}/orders`, { params }),
   getAnalytics: (id, params) => api.get(`/customers/${id}/analytics`, { params }),
-  updateLoyaltyPoints: (id, data) => api.put(`/customers/${id}/loyalty-points`, data),
   bulkUpdate: (data) => api.put('/customers/bulk-update', data),
   getStats: () => api.get('/customers/stats'),
   search: (params) => api.get('/customers/search', { params }),
@@ -123,6 +122,8 @@ export const ordersAPI = {
   bulkUpdate: (data) => api.post('/orders/bulk-update', data),
   getByCustomer: (customerId, params) => api.get(`/orders/customer/${customerId}`, { params }),
   generateReceipt: (id) => api.get(`/orders/${id}/receipt`),
+  getPricingConfig: () => api.get('/orders/pricing-config'),
+  getDeliverySchedule: (params) => api.get('/orders/deliveries', { params }),
 };
 
 // Services API methods
@@ -149,6 +150,37 @@ export const clothingCategoriesAPI = {
   delete: (key) => api.delete(`/clothing-categories/${key}`),
 };
 
+// Extra Items ("Other Items": hangers, bags, ...) API methods
+export const extraItemsAPI = {
+  getAll: (params) => api.get('/extra-items', { params }),
+  getById: (id) => api.get(`/extra-items/${id}`),
+  create: (data) => api.post('/extra-items', data),
+  update: (id, data) => api.put(`/extra-items/${id}`, data),
+  toggleStatus: (id, data) => api.patch(`/extra-items/${id}/toggle-status`, data),
+  delete: (id) => api.delete(`/extra-items/${id}`),
+};
+
+// Expenses API methods
+export const expensesAPI = {
+  getAll: (params) => api.get('/expenses', { params }),
+  getSummary: () => api.get('/expenses/summary'),
+  getById: (id) => api.get(`/expenses/${id}`),
+  create: (data) => api.post('/expenses', data),
+  update: (id, data) => api.put(`/expenses/${id}`, data),
+  delete: (id) => api.delete(`/expenses/${id}`),
+};
+
+// Discounts / promotions API methods
+export const discountsAPI = {
+  getAll: (params) => api.get('/discounts', { params }),
+  getActive: (params) => api.get('/discounts/active', { params }),
+  getById: (id) => api.get(`/discounts/${id}`),
+  create: (data) => api.post('/discounts', data),
+  update: (id, data) => api.put(`/discounts/${id}`, data),
+  toggleStatus: (id, data) => api.patch(`/discounts/${id}/toggle-status`, data),
+  delete: (id) => api.delete(`/discounts/${id}`),
+};
+
 // Staff API methods
 export const staffAPI = {
   getAll: (params) => api.get('/staff', { params }),
@@ -173,6 +205,7 @@ export const reportsAPI = {
   getOrderStatus: (params) => api.get('/reports/order-status', { params }),
   getCustomer: (params) => api.get('/reports/customers', { params }),
   getService: (params) => api.get('/reports/services', { params }),
+  getIncomeExpense: (params) => api.get('/reports/income-expense', { params }),
 };
 
 export default api;

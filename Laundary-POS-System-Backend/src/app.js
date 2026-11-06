@@ -15,6 +15,9 @@ const orderRoutes = require('./routes/orders');
 const serviceRoutes = require('./routes/services');
 const reportRoutes = require('./routes/reports');
 const clothingCategoryRoutes = require('./routes/clothingCategories');
+const extraItemRoutes = require('./routes/extraItems');
+const expenseRoutes = require('./routes/expenses');
+const discountRoutes = require('./routes/discounts');
 
 const app = express();
 
@@ -140,6 +143,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/clothing-categories', clothingCategoryRoutes);
+app.use('/api/extra-items', extraItemRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/discounts', discountRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -167,7 +173,11 @@ app.get('/api', (req, res) => {
       customers: '/api/customers',
       orders: '/api/orders',
       services: '/api/services',
-      reports: '/api/reports'
+      reports: '/api/reports',
+      clothingCategories: '/api/clothing-categories',
+      extraItems: '/api/extra-items',
+      expenses: '/api/expenses',
+      discounts: '/api/discounts'
     }
   });
 });

@@ -519,6 +519,7 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
       const extraCharges = orderDetails.extraCharges?.total || 0;
       const pickupCharges = orderDetails.pickupRequired ? Number(orderDetails.pickupCharges) || 0 : 0;
       const deliveryCharges = orderDetails.deliveryRequired ? Number(orderDetails.deliveryCharges) || 0 : 0;
+      const minimumTopUp = Number(orderDetails.minimumOrderAdjustment) || 0;
 
       const pickupLabel = orderDetails.pickupRequired
         ? (pickupCharges > 0 ? formatPlainCurrency(pickupCharges) : 'FREE')
@@ -546,6 +547,9 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
       }
       if (tax > 0) {
         summaryText += `\nTax: ${formatPlainCurrency(tax)}`;
+      }
+      if (minimumTopUp > 0) {
+        summaryText += `\nMinimum order top-up: +${formatPlainCurrency(minimumTopUp)}`;
       }
       summaryText += `\nTotal Amount: ${formatPlainCurrency(totalAmount)}`;
 
@@ -586,6 +590,11 @@ const sendOrderConfirmation = async ({ email, orderNumber, customerName, totalAm
             <tr>
               <td style="padding: 5px 0;">Tax:</td>
               <td style="text-align: right; padding: 5px 0;">${formatPlainCurrency(tax)}</td>
+            </tr>` : ''}
+            ${minimumTopUp > 0 ? `
+            <tr>
+              <td style="padding: 5px 0; color: #b45309;">Minimum order top-up:</td>
+              <td style="text-align: right; padding: 5px 0; color: #b45309;">+${formatPlainCurrency(minimumTopUp)}</td>
             </tr>` : ''}
             <tr style="border-top: 2px solid #2563eb; font-weight: bold; font-size: 18px;">
               <td style="padding: 10px 0;">Total Amount:</td>
@@ -886,6 +895,12 @@ const sendReceipt = async ({ email, orderNumber, customerName, order }) => {
         <span>${formatAmount(order.taxAmount)}</span>
       </div>
       ` : ''}
+      ${order.minimumOrderAdjustment > 0 ? `
+      <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #b45309;">
+        <span>Minimum order top-up:</span>
+        <span>+${formatAmount(order.minimumOrderAdjustment)}</span>
+      </div>
+      ` : ''}
       <div style="display: flex; justify-content: space-between; padding: 12px 0 8px 0; font-size: 16px; font-weight: 700; border-top: 2px solid #e5e7eb; margin-top: 8px;">
         <span>Total Amount:</span>
         <span>${formatAmount(order.totalAmount)}</span>
@@ -951,7 +966,7 @@ ${order.items?.map(item => {
 PAYMENT SUMMARY
 ----------------------------------------
 Subtotal: ${formatAmount(order.subtotal)}
-${order.isExpressService && order.expressServiceFee > 0 ? `Express Service (1 Day): +${formatAmount(order.expressServiceFee)}\n` : ''}${order.pickupRequired ? `Pickup: ${order.pickupCharges > 0 ? formatAmount(order.pickupCharges) : 'FREE'}\n` : ''}${order.deliveryRequired ? `Delivery${order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}: ${order.deliveryCharges > 0 ? formatAmount(order.deliveryCharges) : 'FREE'}\n` : ''}${order.discountAmount > 0 ? `Discount: -${formatAmount(order.discountAmount)}\n` : ''}${order.taxAmount > 0 ? `Tax: ${formatAmount(order.taxAmount)}\n` : ''}Total Amount: ${formatAmount(order.totalAmount)}
+${order.isExpressService && order.expressServiceFee > 0 ? `Express Service (1 Day): +${formatAmount(order.expressServiceFee)}\n` : ''}${order.pickupRequired ? `Pickup: ${order.pickupCharges > 0 ? formatAmount(order.pickupCharges) : 'FREE'}\n` : ''}${order.deliveryRequired ? `Delivery${order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : ''}: ${order.deliveryCharges > 0 ? formatAmount(order.deliveryCharges) : 'FREE'}\n` : ''}${order.discountAmount > 0 ? `Discount: -${formatAmount(order.discountAmount)}\n` : ''}${order.taxAmount > 0 ? `Tax: ${formatAmount(order.taxAmount)}\n` : ''}${order.minimumOrderAdjustment > 0 ? `Minimum order top-up: +${formatAmount(order.minimumOrderAdjustment)}\n` : ''}Total Amount: ${formatAmount(order.totalAmount)}
 Paid: ${formatAmount(order.paidAmount)}
 Balance: ${formatAmount(order.balanceAmount)}
 

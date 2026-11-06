@@ -18,6 +18,10 @@ BUSINESS_NAME=Your Business Name
 BUSINESS_ADDRESS=Your Business Address, City, State, Country
 BUSINESS_PHONE=+1 234 567 8900
 BUSINESS_EMAIL=info@yourbusiness.com
+
+# Pricing rules (LKR). Orders below the minimum are topped up to it.
+MINIMUM_ORDER_AMOUNT=400
+EXPRESS_SERVICE_FEE=100
 CURRENCY=USD
 
 # ----------------------------------

@@ -13,6 +13,11 @@ VITE_API_URL=https://your-backend-name.vercel.app/api
 # BUSINESS CONFIGURATION (Optional)
 # ----------------------------------
 VITE_BUSINESS_NAME=Your Business Name
+
+# Display fallbacks only. The backend (MINIMUM_ORDER_AMOUNT / EXPRESS_SERVICE_FEE)
+# decides the real amounts and the app fetches them on load.
+VITE_MINIMUM_ORDER_AMOUNT=400
+VITE_EXPRESS_SERVICE_FEE=100
 VITE_BUSINESS_ADDRESS=Your Business Address, City, State, Country
 VITE_BUSINESS_PHONE=+1 234 567 8900
 VITE_BUSINESS_EMAIL=info@yourbusiness.com

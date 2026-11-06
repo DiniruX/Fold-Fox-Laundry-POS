@@ -7,7 +7,7 @@ import {
   XMarkIcon 
 } from '@heroicons/react/24/outline';
 import { ordersAPI } from '../../services/api';
-import { formatOrderAmount } from '../../services/orderService';
+import { formatOrderAmount, usePricingConfig, calculateMinimumOrderAdjustment } from '../../services/orderService';
 import { getClothingCategoryLabel } from '../../services/serviceService';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -16,6 +16,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
+  const { pricing } = usePricingConfig();
   const [confirmedItems, setConfirmedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -101,12 +102,15 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
     const pickupCharges = Number(order.pickupCharges) || 0;
     const deliveryCharges = Number(order.deliveryCharges) || 0;
     
-    const actualTotal = actualSubtotal 
-      - actualDiscount 
-      + expressServiceFee 
-      + extraChargesTotal 
-      + pickupCharges 
+    const actualBase = actualSubtotal
+      - actualDiscount
+      + expressServiceFee
+      + extraChargesTotal
+      + pickupCharges
       + deliveryCharges;
+    // Same rule as the server: top up to the minimum order amount
+    const minimumTopUp = calculateMinimumOrderAdjustment(actualBase, pricing.minimumOrderAmount);
+    const actualTotal = Math.round((actualBase + minimumTopUp) * 100) / 100;
     const estimatedTotal = order.totalAmount;
     const difference = actualTotal - estimatedTotal;
 
@@ -118,6 +122,7 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
       extraChargesTotal,
       pickupCharges,
       deliveryCharges,
+      minimumTopUp,
       actualTotal,
       estimatedTotal,
       difference,
@@ -295,7 +300,7 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
         </div>
 
         {/* Additional Charges Summary */}
-        {(totals.expressServiceFee > 0 || totals.extraChargesTotal > 0 || totals.actualDiscount > 0 || totals.pickupCharges > 0 || totals.deliveryCharges > 0) && (
+        {(totals.expressServiceFee > 0 || totals.extraChargesTotal > 0 || totals.actualDiscount > 0 || totals.pickupCharges > 0 || totals.deliveryCharges > 0 || totals.minimumTopUp > 0) && (
           <div className="rounded-xl p-4 border-2 border-blue-200 bg-blue-50">
             <h4 className="text-sm font-bold text-blue-900 mb-3">Additional Charges & Discounts</h4>
             <div className="space-y-2 text-sm">
@@ -327,6 +332,12 @@ const ConfirmItemsModal = ({ isOpen, onClose, order, onSuccess }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-green-700">Discount:</span>
                   <span className="font-semibold text-green-900">-{formatOrderAmount(totals.actualDiscount)}</span>
+                </div>
+              )}
+              {totals.minimumTopUp > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-amber-700">Minimum order top-up (min {formatOrderAmount(pricing.minimumOrderAmount)}):</span>
+                  <span className="font-semibold text-amber-900">+{formatOrderAmount(totals.minimumTopUp)}</span>
                 </div>
               )}
             </div>

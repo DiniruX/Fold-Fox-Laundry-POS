@@ -11,6 +11,10 @@ import {
   SparklesIcon,
   CurrencyDollarIcon,
   DocumentChartBarIcon,
+  ArchiveBoxIcon,
+  ReceiptPercentIcon,
+  BanknotesIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../constants';
@@ -50,6 +54,18 @@ const Sidebar = ({ isOpen, onClose }) => {
               icon: UsersIcon,
               canAccess: canAccess('customers', 'read'),
             },
+            {
+              name: 'Deliveries',
+              href: ROUTES.DELIVERIES,
+              icon: TruckIcon,
+              canAccess: canAccess('orders', 'read'),
+            },
+            {
+              name: 'Expenses',
+              href: ROUTES.EXPENSES,
+              icon: BanknotesIcon,
+              canAccess: canAccess('expenses', 'read'),
+            },
           ],
         },
         {
@@ -60,6 +76,18 @@ const Sidebar = ({ isOpen, onClose }) => {
               href: ROUTES.SERVICES,
               icon: WrenchScrewdriverIcon,
               canAccess: canAccess('services', 'read'),
+            },
+            {
+              name: 'Other Items',
+              href: ROUTES.OTHER_ITEMS,
+              icon: ArchiveBoxIcon,
+              canAccess: canAccess('extraItems', 'read'),
+            },
+            {
+              name: 'Discounts',
+              href: ROUTES.DISCOUNTS,
+              icon: ReceiptPercentIcon,
+              canAccess: canAccess('discounts', 'read'),
             },
             {
               name: 'Staff',
@@ -105,7 +133,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           items: [
             {
               name: 'New Order',
-              href: ROUTES.ORDERS,
+              href: ROUTES.NEW_ORDER,
               icon: SparklesIcon,
               canAccess: canAccess('orders', 'create'),
             },
@@ -113,6 +141,12 @@ const Sidebar = ({ isOpen, onClose }) => {
               name: 'Orders',
               href: ROUTES.ORDERS,
               icon: ClipboardDocumentListIcon,
+              canAccess: canAccess('orders', 'read'),
+            },
+            {
+              name: 'Deliveries',
+              href: ROUTES.DELIVERIES,
+              icon: TruckIcon,
               canAccess: canAccess('orders', 'read'),
             },
           ],
@@ -201,6 +235,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                       <NavLink
                         key={item.name}
                         to={item.href}
+                        end={item.href === ROUTES.ORDERS}
                         className={({ isActive }) =>
                           cn(
                             'group flex items-center justify-between px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200',

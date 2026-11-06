@@ -15,16 +15,24 @@ import {
 import { ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { getOrderStatusReport, exportOrderStatusToExcel } from '../../services/reportService';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import Button from '../ui/Button';
 import toast from 'react-hot-toast';
+import { getOrderStatusLabel } from '../../services/orderService';
 
+// Matches the order status workflow (pickup → received → … → complete)
 const COLORS = {
-  pending: '#F59E0B',
-  processing: '#3B82F6',
-  ready: '#8B5CF6',
-  delivered: '#10B981',
-  cancelled: '#EF4444',
+  pickup: '#F97316',
+  received: '#06B6D4',
+  washing: '#6366F1',
+  drying: '#0EA5E9',
+  ironing: '#8B5CF6',
+  dry_cleaning: '#EC4899',
+  folding: '#22C55E',
+  packing: '#F59E0B',
+  deliver: '#14B8A6',
+  complete: '#10B981',
 };
+
+const STATUS_ORDER = Object.keys(COLORS);
 
 const OrderStatusReport = () => {
   const [loading, setLoading] = useState(false);
@@ -42,12 +50,15 @@ const OrderStatusReport = () => {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
       const response = await getOrderStatusReport(params);
-      setData(response.statusData || []);
+      const sorted = [...(response.statusData || [])].sort(
+        (a, b) => (STATUS_ORDER.indexOf(a._id) + 1 || 99) - (STATUS_ORDER.indexOf(b._id) + 1 || 99)
+      );
+      setData(sorted);
     } catch (error) {
       toast.error('Failed to fetch order status report');
       console.error('Error fetching order status report:', error);
@@ -59,7 +70,7 @@ const OrderStatusReport = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const params = {};
+      const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
@@ -73,8 +84,10 @@ const OrderStatusReport = () => {
     }
   };
 
+  const labelFor = (status) => (status ? getOrderStatusLabel(status) : 'Unknown');
+
   const chartData = data.map((item) => ({
-    name: item._id || 'Unknown',
+    name: labelFor(item._id),
     value: item.count,
     color: COLORS[item._id] || '#6B7280',
   }));
@@ -110,6 +123,7 @@ const OrderStatusReport = () => {
               <input
                 type="date"
                 value={filters.endDate}
+                min={filters.startDate || undefined}
                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                 className="border-0 px-2 py-1 text-sm focus:ring-2 focus:ring-orange-500 rounded"
               />
@@ -215,7 +229,7 @@ const OrderStatusReport = () => {
                 <div key={index} className="bg-white rounded-lg shadow p-4 border-l-4" style={{ borderColor: color }}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 capitalize">{item._id || 'Unknown'}</p>
+                      <p className="text-sm text-gray-600">{labelFor(item._id)}</p>
                       <p className="text-2xl font-bold text-gray-900">{item.count}</p>
                       <p className="text-xs text-gray-500">{percentage}% of total</p>
                     </div>
@@ -258,7 +272,7 @@ const OrderStatusReport = () => {
                               className="h-3 w-3 rounded-full"
                               style={{ backgroundColor: color }}
                             />
-                            <span className="text-gray-900 capitalize">{item._id || 'Unknown'}</span>
+                            <span className="text-gray-900">{labelFor(item._id)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

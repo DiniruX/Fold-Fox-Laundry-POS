@@ -10,11 +10,13 @@ const {
   exportRevenueToExcel,
   exportOrderStatusToExcel,
   exportCustomerToExcel,
-  exportServiceToExcel
+  exportServiceToExcel,
+  getIncomeExpenseReport,
+  exportIncomeExpenseToExcel
 } = require('../controllers/reportController');
 
 const { authenticateToken } = require('../middleware/auth');
-const { canViewReports } = require('../middleware/roleCheck');
+const { canViewReports, requireAdmin } = require('../middleware/roleCheck');
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -33,6 +35,10 @@ router.get('/customers', canViewReports, getCustomerReport);
 
 // GET /api/reports/services - Get service report
 router.get('/services', canViewReports, getServiceReport);
+
+// GET /api/reports/income-expense - Income vs expenses (Admin only: includes salaries)
+router.get('/income-expense', requireAdmin, getIncomeExpenseReport);
+router.get('/export/income-expense', requireAdmin, exportIncomeExpenseToExcel);
 
 // Excel Export Routes
 // GET /api/reports/export/revenue - Export revenue report to Excel

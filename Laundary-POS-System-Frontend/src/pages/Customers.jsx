@@ -4,7 +4,6 @@ import {
   ChartBarIcon,
   PlusIcon,
   MagnifyingGlassIcon,
-  StarIcon,
   ClockIcon,
   ShoppingBagIcon,
   SparklesIcon,
@@ -12,7 +11,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import CustomerList from '../components/customers/CustomerList';
 import CustomerAnalytics from '../components/customers/CustomerAnalytics';
-import LoyaltyManager from '../components/customers/LoyaltyManager';
 import Button from '../components/ui/Button';
 import { customerService } from '../services/customerService';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -20,7 +18,6 @@ import { useNavigate } from 'react-router-dom';
 
 const Customers = () => {
   const [activeTab, setActiveTab] = useState('list');
-  const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [quickSearchTerm, setQuickSearchTerm] = useState('');
   
@@ -44,14 +41,9 @@ const Customers = () => {
     { id: 'analytics', name: 'Analytics & Insights', icon: ChartBarIcon, badge: null },
   ];
 
-  const handleLoyaltyManage = (customer) => {
-    setSelectedCustomer(customer);
-    setShowLoyaltyModal(true);
-  };
-
   const handleCreateOrder = (customer) => {
     // Navigate to orders page with customer pre-selected
-    navigate('/orders', { state: { preSelectedCustomer: customer } });
+    navigate('/orders/new', { state: { preSelectedCustomer: customer } });
   };
 
   const handleQuickCustomerAccess = (customer) => {
@@ -64,7 +56,6 @@ const Customers = () => {
       case 'list':
         return (
           <CustomerList
-            onLoyaltyManage={handleLoyaltyManage}
             onCustomerSelect={setSelectedCustomer}
             onCreateOrder={handleCreateOrder}
             preSelectedCustomer={selectedCustomer}
@@ -98,7 +89,7 @@ const Customers = () => {
               <div>
                 <h1 className="text-2xl font-bold text-white">Customer Management</h1>
                 <p className="text-white/70 mt-1">
-                  Manage your customer database, loyalty programs, and analytics
+                  Manage your customer database and analytics
                 </p>
               </div>
             </div>
@@ -179,7 +170,7 @@ const Customers = () => {
               <span>Create Order</span>
             </button>
             <button
-              onClick={() => selectedCustomer && setShowLoyaltyModal(true)}
+              onClick={() => selectedCustomer && navigate(`/customers/${selectedCustomer._id}`)}
               disabled={!selectedCustomer}
               className={`w-full inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
                 selectedCustomer
@@ -187,8 +178,8 @@ const Customers = () => {
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-100'
               }`}
             >
-              <StarIcon className="h-4 w-4" />
-              <span>Manage Loyalty</span>
+              <ClockIcon className="h-4 w-4" />
+              <span>Order History</span>
             </button>
           </div>
         </div>
@@ -218,9 +209,7 @@ const Customers = () => {
                     </p>
                     <p className="text-xs text-gray-500 truncate">{customer.phoneNumber}</p>
                   </div>
-                  <StarIcon className={`h-4 w-4 flex-shrink-0 ml-2 ${
-                    customer.loyaltyPoints >= 500 ? 'text-yellow-500' : 'text-gray-300'
-                  }`} />
+                  <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{customer.totalOrders || 0} orders</span>
                 </button>
               ))
             ) : (
@@ -278,21 +267,6 @@ const Customers = () => {
         </div>
       </div>
 
-      {/* Loyalty Modal */}
-      {selectedCustomer && (
-        <LoyaltyManager
-          isOpen={showLoyaltyModal}
-          onClose={() => {
-            setShowLoyaltyModal(false);
-            setSelectedCustomer(null);
-          }}
-          customer={selectedCustomer}
-          onSuccess={() => {
-            setShowLoyaltyModal(false);
-            setSelectedCustomer(null);
-          }}
-        />
-      )}
     </div>
   );
 };

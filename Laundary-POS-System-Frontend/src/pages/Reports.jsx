@@ -4,13 +4,17 @@ import {
   ClipboardDocumentCheckIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../context/AuthContext';
 import RevenueReport from '../components/reports/RevenueReport';
 import OrderStatusReport from '../components/reports/OrderStatusReport';
 import CustomerReport from '../components/reports/CustomerReport';
 import ServiceReport from '../components/reports/ServiceReport';
+import IncomeExpenseReport from '../components/reports/IncomeExpenseReport';
 
 const Reports = () => {
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('revenue');
 
   const tabs = [
@@ -20,6 +24,13 @@ const Reports = () => {
       icon: ChartBarIcon,
       component: RevenueReport,
     },
+    // Includes salaries, so admins only
+    ...(isAdmin() ? [{
+      id: 'income-expense',
+      name: 'Income & Expenses',
+      icon: ScaleIcon,
+      component: IncomeExpenseReport,
+    }] : []),
     {
       id: 'orders',
       name: 'Order Status',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiEye, FiUserPlus, FiSearch, FiFilter, FiCheck, FiX, FiKey } from 'react-icons/fi';
 import {
@@ -71,18 +71,24 @@ const UserList = ({ onCreateUser, onEditUser, onViewUser, onChangePassword, onSt
     fetchUsers();
   }, [filters]);
 
-  // Calculate and report stats to parent
+  // Calculate and report stats to parent.
+  // The callback is read through a ref so a parent re-render (which creates a
+  // new function) does not re-run this effect and loop forever.
+  const onStatsUpdateRef = useRef(onStatsUpdate);
   useEffect(() => {
-    if (onStatsUpdate && users.length > 0) {
-      const stats = {
+    onStatsUpdateRef.current = onStatsUpdate;
+  }, [onStatsUpdate]);
+
+  useEffect(() => {
+    if (onStatsUpdateRef.current && users.length > 0) {
+      onStatsUpdateRef.current({
         totalUsers: pagination.totalUsers || users.length,
         activeUsers: users.filter(u => u.isActive).length,
         inactiveUsers: users.filter(u => !u.isActive).length,
         adminUsers: users.filter(u => u.role === ROLES.ADMIN).length,
-      };
-      onStatsUpdate(stats);
+      });
     }
-  }, [users, pagination, onStatsUpdate]);
+  }, [users, pagination]);
 
   // Handle filter changes
   const handleFilterChange = (key, value) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { BUSINESS_NAME } from '../constants';
 import {
   PencilIcon,
   PrinterIcon,
@@ -165,7 +166,7 @@ Total: ${formatOrderAmount(order.totalAmount)}
 
   // Copy Email 1: Pickup Scheduled SMS Message
   const copyPickupScheduledSMS = () => {
-    const businessName = import.meta.env.VITE_BUSINESS_NAME;
+    const businessName = BUSINESS_NAME;
     const address = order.pickupAddress 
       ? `${order.pickupAddress.street || ''}, ${order.pickupAddress.city || ''}`.trim()
       : 'your address';
@@ -190,7 +191,7 @@ Questions? Call us!`;
 
   // Copy Email 2: Order Confirmed SMS Message
   const copyOrderConfirmedSMS = () => {
-    const businessName = import.meta.env.VITE_BUSINESS_NAME;
+    const businessName = BUSINESS_NAME;
     const currency = import.meta.env.VITE_CURRENCY;
     
     // Build items list (short format for SMS)
@@ -218,12 +219,18 @@ Questions? Call us!`;
     if (order.deliveryRequired) {
       const distanceLabel = order.deliveryDistance > 0 ? ` (${order.deliveryDistance}km)` : '';
       chargesSection += `Delivery${distanceLabel}: ${order.deliveryCharges > 0 ? formatOrderAmount(order.deliveryCharges) : 'FREE'}\n`;
+      if (order.expectedDeliveryDate) {
+        chargesSection += `Delivery date: ${new Date(order.expectedDeliveryDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}\n`;
+      }
     }
     if (order.discountAmount > 0) {
       chargesSection += `Discount: -${formatOrderAmount(order.discountAmount)}\n`;
     }
     if (order.taxAmount > 0) {
       chargesSection += `Tax: ${formatOrderAmount(order.taxAmount)}\n`;
+    }
+    if (order.minimumOrderAdjustment > 0) {
+      chargesSection += `Minimum order top-up: +${formatOrderAmount(order.minimumOrderAdjustment)}\n`;
     }
 
     const smsMessage = `${businessName} - Order Confirmed!
@@ -710,6 +717,15 @@ Continue with deletion?`)) {
                           <span className="text-sm font-bold text-green-700">-{formatOrderAmount(order.discountAmount)}</span>
                         </div>
                       )}
+                      {order.minimumOrderAdjustment > 0 && (
+                        <div className="flex justify-between items-center bg-amber-50 -mx-4 px-4 py-2 border-l-4 border-amber-500">
+                          <div>
+                            <span className="text-sm text-amber-700 font-medium block">Minimum order top-up:</span>
+                            <span className="text-xs text-amber-600">Orders are charged at least {formatOrderAmount(order.totalAmount)}</span>
+                          </div>
+                          <span className="text-sm font-bold text-amber-700">+{formatOrderAmount(order.minimumOrderAdjustment)}</span>
+                        </div>
+                      )}
                       <div className="border-t-2 border-gray-200 pt-3 mt-3">
                         <div className="flex justify-between items-center">
                           <span className="text-base font-bold text-gray-900">Total Amount:</span>
@@ -866,6 +882,14 @@ Continue with deletion?`)) {
                         </h3>
                         <div className="bg-white rounded-lg p-4 space-y-3">
                           <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Delivery Date</p>
+                            <p className="text-sm font-bold text-green-700">
+                              {order.expectedDeliveryDate
+                                ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })
+                                : 'Not scheduled'}
+                            </p>
+                          </div>
+                          <div className="pt-3 border-t border-gray-200">
                             <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Address</p>
                             <p className="text-sm font-medium text-gray-900">
                               {[

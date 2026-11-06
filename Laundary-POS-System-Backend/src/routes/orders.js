@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const {
+  getPricingConfig,
+  getDeliverySchedule,
   createOrder,
   getOrders,
   getOrder,
@@ -23,6 +25,8 @@ router.use(authenticateToken);
 // Order CRUD routes
 router.get('/', getOrders); // Get all orders with filtering
 router.get('/analytics', getOrderAnalytics); // Get order analytics
+router.get('/pricing-config', getPricingConfig); // Minimum order / express fee for the POS
+router.get('/deliveries', getDeliverySchedule); // Deliveries calendar
 router.get('/:id', getOrder); // Get single order
 router.post('/', validateOrder, createOrder); // Create new order
 router.put('/:id', updateOrder); // Update order
