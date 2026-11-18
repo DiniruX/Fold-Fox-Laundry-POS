@@ -125,7 +125,7 @@ const IncomeExpenseReport = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Income & Expenses</h2>
-              <p className="text-sm text-gray-600">Payments received vs money spent, and what's left</p>
+              <p className="text-sm text-gray-600">Payments received vs money spent</p>
             </div>
           </div>
 
