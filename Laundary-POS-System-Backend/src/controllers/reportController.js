@@ -3,6 +3,10 @@ const Customer = require('../models/Customer');
 const Service = require('../models/Service');
 const Expense = require('../models/Expense');
 const ExcelJS = require('exceljs');
+const { buildReportPdf, fmtMoney, describePeriod } = require('../utils/reportPdf');
+
+const wantsPdf = (req) => String(req.query.format || '').toLowerCase() === 'pdf';
+const periodLabel = (groupBy) => ({ day: 'Daily', week: 'Weekly', month: 'Monthly' }[groupBy] || 'Daily');
 
 /**
  * Timezone handling: the browser sends ?tz=<getTimezoneOffset()> (minutes, e.g. -330
@@ -405,6 +409,37 @@ const exportRevenueToExcel = async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.week': 1, '_id.day': 1 } }
     ]);
     
+    if (wantsPdf(req)) {
+      const totalRevenue = revenueData.reduce((sum, r) => sum + r.totalRevenue, 0);
+      const totalOrders = revenueData.reduce((sum, r) => sum + r.orderCount, 0);
+      return buildReportPdf(res, {
+        title: 'Revenue Report',
+        subtitle: `${periodLabel(groupBy)} · ${describePeriod(startDate, endDate)} · Fully paid orders only`,
+        filename: 'revenue-report.pdf',
+        summary: [
+          { label: 'Total Revenue', value: fmtMoney(totalRevenue), color: '#10b981' },
+          { label: 'Orders', value: totalOrders, color: '#3b82f6' },
+          { label: 'Avg Order Value', value: fmtMoney(totalOrders ? totalRevenue / totalOrders : 0), color: '#8b5cf6' }
+        ],
+        sections: [{
+          heading: 'Breakdown by period',
+          columns: [
+            { header: 'Period', key: 'period', width: 120 },
+            { header: 'Revenue', key: 'revenue', width: 120, align: 'right' },
+            { header: 'Orders', key: 'orders', width: 80, align: 'right' },
+            { header: 'Avg Order Value', key: 'avg', width: 120, align: 'right' }
+          ],
+          rows: revenueData.map(item => ({
+            period: formatPeriodKey(item._id, groupBy),
+            revenue: fmtMoney(item.totalRevenue),
+            orders: item.orderCount,
+            avg: fmtMoney(item.averageOrderValue)
+          })),
+          totalRow: { period: 'TOTAL', revenue: fmtMoney(totalRevenue), orders: totalOrders, avg: fmtMoney(totalOrders ? totalRevenue / totalOrders : 0) }
+        }]
+      });
+    }
+
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Revenue Report');
@@ -471,6 +506,38 @@ const exportOrderStatusToExcel = async (req, res) => {
       }
     ]);
     
+    if (wantsPdf(req)) {
+      const STATUS_LABELS = { pickup: 'Ready for Pickup', received: 'Items Received', washing: 'Washing', drying: 'Drying', ironing: 'Ironing', dry_cleaning: 'Dry Cleaning', folding: 'Folding', packing: 'Packing', deliver: 'Ready for Delivery', complete: 'Order Complete' };
+      const STATUS_ORDER = Object.keys(STATUS_LABELS);
+      const total = statusData.reduce((sum, r) => sum + r.count, 0);
+      const sorted = [...statusData].sort((a, b) => (STATUS_ORDER.indexOf(a._id) + 1 || 99) - (STATUS_ORDER.indexOf(b._id) + 1 || 99));
+      const completed = statusData.find(r => r._id === 'complete')?.count || 0;
+      return buildReportPdf(res, {
+        title: 'Order Status Report',
+        subtitle: describePeriod(startDate, endDate),
+        filename: 'order-status-report.pdf',
+        summary: [
+          { label: 'Total Orders', value: total, color: '#3b82f6' },
+          { label: 'Completed', value: completed, color: '#10b981' },
+          { label: 'In Progress', value: total - completed, color: '#f59e0b' }
+        ],
+        sections: [{
+          heading: 'Orders by status',
+          columns: [
+            { header: 'Status', key: 'status', width: 200 },
+            { header: 'Orders', key: 'count', width: 100, align: 'right' },
+            { header: 'Share', key: 'share', width: 100, align: 'right' }
+          ],
+          rows: sorted.map(item => ({
+            status: STATUS_LABELS[item._id] || item._id || 'Unknown',
+            count: item.count,
+            share: total ? `${((item.count / total) * 100).toFixed(1)}%` : '0%'
+          })),
+          totalRow: { status: 'TOTAL', count: total, share: '100%' }
+        }]
+      });
+    }
+
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Order Status Report');
@@ -556,6 +623,41 @@ const exportCustomerToExcel = async (req, res) => {
       { $limit: Math.min(parseInt(limit) || 100, 1000) }
     ]);
     
+    if (wantsPdf(req)) {
+      const totalSpent = customerData.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
+      const totalOrders = customerData.reduce((sum, c) => sum + (c.totalOrders || 0), 0);
+      return buildReportPdf(res, {
+        title: 'Customer Report',
+        subtitle: `Top ${customerData.length} customers by spend · ${describePeriod(startDate, endDate)}`,
+        filename: 'customer-report.pdf',
+        summary: [
+          { label: 'Customers', value: customerData.length, color: '#3b82f6' },
+          { label: 'Total Revenue', value: fmtMoney(totalSpent), color: '#10b981' },
+          { label: 'Total Orders', value: totalOrders, color: '#8b5cf6' }
+        ],
+        sections: [{
+          heading: 'Top customers',
+          columns: [
+            { header: '#', key: 'rank', width: 30, align: 'right' },
+            { header: 'Customer', key: 'name', width: 160 },
+            { header: 'Phone', key: 'phone', width: 100 },
+            { header: 'Orders', key: 'orders', width: 60, align: 'right' },
+            { header: 'Total Spent', key: 'spent', width: 110, align: 'right' },
+            { header: 'Avg Order', key: 'avg', width: 100, align: 'right' }
+          ],
+          rows: customerData.map((c, i) => ({
+            rank: i + 1,
+            name: c.customerName || 'Unknown',
+            phone: c.phoneNumber || '',
+            orders: c.totalOrders,
+            spent: fmtMoney(c.totalSpent),
+            avg: fmtMoney(c.averageOrderValue)
+          })),
+          totalRow: { rank: '', name: 'TOTAL', phone: '', orders: totalOrders, spent: fmtMoney(totalSpent), avg: fmtMoney(totalOrders ? totalSpent / totalOrders : 0) }
+        }]
+      });
+    }
+
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Customer Report');
@@ -642,6 +744,46 @@ const exportServiceToExcel = async (req, res) => {
       { $sort: { totalRevenue: -1 } }
     ]);
     
+    if (wantsPdf(req)) {
+      const totalRevenue = serviceData.reduce((sum, r) => sum + (r.totalRevenue || 0), 0);
+      const totalQty = serviceData.reduce((sum, r) => sum + (r.totalQuantity || 0), 0);
+      const totalWeight = serviceData.reduce((sum, r) => sum + (r.totalWeight || 0), 0);
+      const stepLabel = (steps) => (steps || '').split(' + ').filter(Boolean).map(x => ({ wash: 'Wash', dry: 'Dry', iron: 'Iron', dry_clean: 'Dry Clean', fold: 'Fold' }[x] || x)).join(' + ');
+      return buildReportPdf(res, {
+        title: 'Service Performance Report',
+        subtitle: describePeriod(startDate, endDate),
+        filename: 'service-report.pdf',
+        summary: [
+          { label: 'Total Revenue', value: fmtMoney(totalRevenue), color: '#10b981' },
+          { label: 'Items', value: totalQty, color: '#3b82f6' },
+          { label: 'Weight', value: `${totalWeight.toFixed(1)} kg`, color: '#8b5cf6' },
+          { label: 'Services Used', value: serviceData.length, color: '#f59e0b' }
+        ],
+        sections: [{
+          heading: 'Services by revenue',
+          columns: [
+            { header: '#', key: 'rank', width: 30, align: 'right' },
+            { header: 'Service', key: 'name', width: 150 },
+            { header: 'Process Steps', key: 'steps', width: 120 },
+            { header: 'Qty', key: 'qty', width: 55, align: 'right' },
+            { header: 'Weight (kg)', key: 'weight', width: 70, align: 'right' },
+            { header: 'Orders', key: 'orders', width: 55, align: 'right' },
+            { header: 'Revenue', key: 'revenue', width: 100, align: 'right' }
+          ],
+          rows: serviceData.map((item, i) => ({
+            rank: i + 1,
+            name: item.serviceName,
+            steps: stepLabel(item.serviceCategory),
+            qty: item.totalQuantity,
+            weight: Number(item.totalWeight || 0).toFixed(1),
+            orders: item.orderCount,
+            revenue: fmtMoney(item.totalRevenue)
+          })),
+          totalRow: { rank: '', name: 'TOTAL', steps: '', qty: totalQty, weight: totalWeight.toFixed(1), orders: '', revenue: fmtMoney(totalRevenue) }
+        }]
+      });
+    }
+
     // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Service Report');
@@ -824,6 +966,89 @@ const exportIncomeExpenseToExcel = async (req, res) => {
   try {
     const { startDate, endDate, groupBy = 'day', tz } = req.query;
     const data = await computeIncomeExpense({ startDate, endDate, groupBy, tz });
+
+    if (wantsPdf(req)) {
+      const CATEGORY_LABELS = { salary: 'Salary', utilities: 'Utilities', rent: 'Rent', supplies: 'Supplies', maintenance: 'Maintenance', transport: 'Transport', marketing: 'Marketing', other: 'Other' };
+      const METHOD_LABELS = { cash: 'Cash', bank_transfer: 'Bank Transfer', card: 'Card', other: 'Other' };
+      const net = data.summary.net;
+      return buildReportPdf(res, {
+        title: 'Income & Expense Report',
+        subtitle: `${periodLabel(groupBy)} · ${describePeriod(startDate, endDate)}`,
+        filename: 'income-expense-report.pdf',
+        landscape: true,
+        summary: [
+          { label: 'Income', value: fmtMoney(data.summary.totalIncome), color: '#10b981' },
+          { label: 'Expenses', value: fmtMoney(data.summary.totalExpenses), color: '#ef4444' },
+          { label: net >= 0 ? 'Net Profit' : 'Net Loss', value: `${net < 0 ? '-' : ''}${fmtMoney(Math.abs(net))}`, color: net >= 0 ? '#059669' : '#dc2626', valueColor: net >= 0 ? '#047857' : '#b91c1c' },
+          { label: 'Margin', value: `${data.summary.margin}%`, color: '#6366f1' },
+          { label: 'Payments / Entries', value: `${data.summary.paymentCount} / ${data.summary.expenseCount}`, color: '#f59e0b' }
+        ],
+        sections: [
+          {
+            heading: 'Breakdown by period',
+            columns: [
+              { header: 'Period', key: 'period', width: 110 },
+              { header: 'Income', key: 'income', width: 110, align: 'right' },
+              { header: 'Expenses', key: 'expenses', width: 110, align: 'right' },
+              { header: 'Net', key: 'net', width: 110, align: 'right' },
+              { header: 'Payments', key: 'payments', width: 70, align: 'right' },
+              { header: 'Expense Entries', key: 'entries', width: 90, align: 'right' }
+            ],
+            rows: data.periods.map(p => ({
+              period: p.period, income: fmtMoney(p.income), expenses: fmtMoney(p.expenses),
+              net: `${p.net < 0 ? '-' : ''}${fmtMoney(Math.abs(p.net))}`, payments: p.payments, entries: p.expenseEntries
+            })),
+            totalRow: {
+              period: 'TOTAL', income: fmtMoney(data.summary.totalIncome), expenses: fmtMoney(data.summary.totalExpenses),
+              net: `${net < 0 ? '-' : ''}${fmtMoney(Math.abs(net))}`, payments: data.summary.paymentCount, entries: data.summary.expenseCount
+            }
+          },
+          {
+            heading: 'Expenses by category',
+            columns: [
+              { header: 'Category', key: 'category', width: 200 },
+              { header: 'Amount', key: 'amount', width: 120, align: 'right' },
+              { header: 'Entries', key: 'count', width: 80, align: 'right' },
+              { header: 'Share of expenses', key: 'share', width: 120, align: 'right' }
+            ],
+            rows: data.expensesByCategory.map(c => ({
+              category: CATEGORY_LABELS[c.category] || c.category, amount: fmtMoney(c.amount), count: c.count,
+              share: data.summary.totalExpenses ? `${((c.amount / data.summary.totalExpenses) * 100).toFixed(1)}%` : '0%'
+            }))
+          },
+          {
+            heading: 'Income by payment method',
+            columns: [
+              { header: 'Method', key: 'method', width: 200 },
+              { header: 'Amount', key: 'amount', width: 120, align: 'right' },
+              { header: 'Payments', key: 'count', width: 80, align: 'right' }
+            ],
+            rows: data.incomeByMethod.map(m => ({ method: METHOD_LABELS[m.method] || m.method, amount: fmtMoney(m.amount), count: m.count }))
+          },
+          {
+            heading: `Transactions (${data.ledger.length})`,
+            columns: [
+              { header: 'Date', key: 'date', width: 95 },
+              { header: 'Type', key: 'type', width: 60 },
+              { header: 'Reference', key: 'reference', width: 100 },
+              { header: 'Description', key: 'description', width: 220 },
+              { header: 'Category / Method', key: 'category', width: 110 },
+              { header: 'Income', key: 'income', width: 90, align: 'right', color: '#047857' },
+              { header: 'Expense', key: 'expense', width: 90, align: 'right', color: '#b91c1c' }
+            ],
+            rows: data.ledger.map(e => ({
+              date: new Date(e.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+              type: e.type === 'income' ? 'Income' : 'Expense',
+              reference: e.reference,
+              description: e.description,
+              category: e.type === 'income' ? (METHOD_LABELS[e.category] || e.category) : (CATEGORY_LABELS[e.category] || e.category),
+              income: e.type === 'income' ? fmtMoney(e.amount) : '',
+              expense: e.type === 'expense' ? fmtMoney(e.amount) : ''
+            }))
+          }
+        ]
+      });
+    }
 
     const workbook = new ExcelJS.Workbook();
 

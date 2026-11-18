@@ -12,9 +12,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
-import { getServiceReport, exportServiceToExcel } from '../../services/reportService';
+import { CalendarIcon } from '@heroicons/react/24/outline';
+import { getServiceReport, exportServiceReport } from '../../services/reportService';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import ExportButtons from './ExportButtons';
 import toast from 'react-hot-toast';
 import { formatOrderAmount } from '../../services/orderService';
 import { getClothingCategoryLabel, getStatusLabel } from '../../services/serviceService';
@@ -26,7 +27,7 @@ const formatSteps = (steps) => (steps ? steps.split(' + ').map(getStatusLabel).j
 
 const ServiceReport = () => {
   const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState(null); // 'xlsx' | 'pdf' | null
   const [data, setData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [filters, setFilters] = useState({
@@ -56,20 +57,20 @@ const ServiceReport = () => {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format = 'xlsx') => {
     try {
-      setExporting(true);
+      setExporting(format);
       const params = { tz: new Date().getTimezoneOffset() };
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
 
-      await exportServiceToExcel(params);
-      toast.success('Report exported successfully');
+      await exportServiceReport(params, format);
+      toast.success(`Report exported as ${format === 'pdf' ? 'PDF' : 'Excel'}`);
     } catch (error) {
-      toast.error('Failed to export report');
+      toast.error(error?.message || 'Failed to export report');
       console.error('Error exporting report:', error);
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -136,14 +137,7 @@ const ServiceReport = () => {
             >
               {loading ? 'Loading...' : '🔄 Apply'}
             </button>
-            <button
-              onClick={handleExport}
-              disabled={exporting || data.length === 0}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 flex items-center"
-            >
-              <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-              {exporting ? 'Exporting...' : 'Export'}
-            </button>
+            <ExportButtons onExport={handleExport} exporting={exporting} disabled={data.length === 0} />
           </div>
         </div>
       </div>

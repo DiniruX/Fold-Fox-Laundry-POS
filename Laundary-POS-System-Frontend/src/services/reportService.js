@@ -60,108 +60,75 @@ export const getIncomeExpenseReport = async (params = {}) => {
   }
 };
 
-// Export income & expense report to Excel
-export const exportIncomeExpenseToExcel = async (params = {}) => {
+/**
+ * Download a report file. `format` is 'xlsx' (default) or 'pdf'.
+ */
+const downloadReport = async (path, baseName, params = {}, format = 'xlsx') => {
+  const isPdf = format === 'pdf';
   try {
-    const response = await api.get('/reports/export/income-expense', {
-      params,
+    const response = await api.get(path, {
+      params: { ...params, ...(isPdf ? { format: 'pdf' } : {}) },
       responseType: 'blob',
+      timeout: 60000,
     });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    // Make sure we really got the format we asked for before saving a file
+    // the user can't open (e.g. an old backend ignoring ?format=pdf).
+    const contentType = String(response.headers?.['content-type'] || '');
+    const head = await response.data.slice(0, 5).text();
+    const looksLikePdf = head.startsWith('%PDF-');
+    const looksLikeXlsx = head.startsWith('PK');
+    if (isPdf && !looksLikePdf) {
+      if (looksLikeXlsx || contentType.includes('spreadsheet')) {
+        throw new Error('The server sent an Excel file instead of a PDF. Restart or redeploy the backend so it includes PDF export support.');
+      }
+      if (contentType.includes('json') || contentType.includes('html')) {
+        let message = 'The server did not return a PDF';
+        try { message = JSON.parse(await response.data.text()).message || message; } catch (e) { /* not json */ }
+        throw new Error(message);
+      }
+      throw new Error('The server did not return a valid PDF file');
+    }
+    if (!isPdf && !looksLikeXlsx) {
+      throw new Error('The server did not return a valid Excel file');
+    }
+
+    const blob = new Blob([response.data], {
+      type: isPdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'income-expense-report.xlsx');
+    link.setAttribute('download', `${baseName}.${isPdf ? 'pdf' : 'xlsx'}`);
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
+    if (!error.response && error instanceof Error) throw error;
+    // Error bodies come back as blobs; surface the server message when there is one
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Failed to export report');
+      } catch (parseError) {
+        if (parseError.message && parseError.message !== 'Unexpected end of JSON input') throw parseError;
+      }
+    }
     throw error.response?.data || error;
   }
 };
 
-// Export revenue report to Excel
-export const exportRevenueToExcel = async (params = {}) => {
-  try {
-    const response = await api.get('/reports/export/revenue', {
-      params,
-      responseType: 'blob',
-    });
-    
-    // Create a download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'revenue-report.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
+export const exportRevenueReport = (params = {}, format = 'xlsx') => downloadReport('/reports/export/revenue', 'revenue-report', params, format);
+export const exportOrderStatusReport = (params = {}, format = 'xlsx') => downloadReport('/reports/export/order-status', 'order-status-report', params, format);
+export const exportCustomerReport = (params = {}, format = 'xlsx') => downloadReport('/reports/export/customers', 'customer-report', params, format);
+export const exportServiceReport = (params = {}, format = 'xlsx') => downloadReport('/reports/export/services', 'service-report', params, format);
+export const exportIncomeExpenseReport = (params = {}, format = 'xlsx') => downloadReport('/reports/export/income-expense', 'income-expense-report', params, format);
 
-// Export order status report to Excel
-export const exportOrderStatusToExcel = async (params = {}) => {
-  try {
-    const response = await api.get('/reports/export/order-status', {
-      params,
-      responseType: 'blob',
-    });
-    
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'order-status-report.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
-// Export customer report to Excel
-export const exportCustomerToExcel = async (params = {}) => {
-  try {
-    const response = await api.get('/reports/export/customers', {
-      params,
-      responseType: 'blob',
-    });
-    
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'customer-report.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
-// Export service report to Excel
-export const exportServiceToExcel = async (params = {}) => {
-  try {
-    const response = await api.get('/reports/export/services', {
-      params,
-      responseType: 'blob',
-    });
-    
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'service-report.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    throw error.response?.data || error;
-  }
-};
-
+// Backwards-compatible names
+export const exportRevenueToExcel = (params) => exportRevenueReport(params, 'xlsx');
+export const exportOrderStatusToExcel = (params) => exportOrderStatusReport(params, 'xlsx');
+export const exportCustomerToExcel = (params) => exportCustomerReport(params, 'xlsx');
+export const exportServiceToExcel = (params) => exportServiceReport(params, 'xlsx');
+export const exportIncomeExpenseToExcel = (params) => exportIncomeExpenseReport(params, 'xlsx');

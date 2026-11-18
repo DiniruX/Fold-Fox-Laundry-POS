@@ -13,8 +13,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { ArrowDownTrayIcon, CalendarIcon } from '@heroicons/react/24/outline';
-import { getIncomeExpenseReport, exportIncomeExpenseToExcel } from '../../services/reportService';
+import { CalendarIcon } from '@heroicons/react/24/outline';
+import { getIncomeExpenseReport, exportIncomeExpenseReport } from '../../services/reportService';
 import { formatOrderAmount, getPaymentMethodLabel } from '../../services/orderService';
 import {
   getExpenseCategoryLabel,
@@ -23,6 +23,7 @@ import {
 } from '../../services/expenseService';
 import { formatDateTime } from '../../utils/helpers';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import ExportButtons from './ExportButtons';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#6366F1', '#F59E0B', '#EC4899', '#3B82F6', '#F97316', '#14B8A6', '#8B5CF6', '#6B7280'];
@@ -49,7 +50,7 @@ const emptyReport = {
  */
 const IncomeExpenseReport = () => {
   const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState(null);
   const [report, setReport] = useState(emptyReport);
   const [ledgerFilter, setLedgerFilter] = useState('all');
   const [filters, setFilters] = useState(() => {
@@ -90,15 +91,15 @@ const IncomeExpenseReport = () => {
     fetchReport({ groupBy: next.groupBy, startDate: next.startDate, endDate: next.endDate });
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format = 'xlsx') => {
     try {
-      setExporting(true);
-      await exportIncomeExpenseToExcel(buildParams());
-      toast.success('Report exported successfully');
+      setExporting(format);
+      await exportIncomeExpenseReport(buildParams(), format);
+      toast.success(`Report exported as ${format === 'pdf' ? 'PDF' : 'Excel'}`);
     } catch (error) {
-      toast.error('Failed to export report');
+      toast.error(error?.message || 'Failed to export report');
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -165,14 +166,7 @@ const IncomeExpenseReport = () => {
             >
               {loading ? 'Loading...' : '🔄 Apply'}
             </button>
-            <button
-              onClick={handleExport}
-              disabled={exporting || loading || (periods.length === 0 && ledger.length === 0)}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 flex items-center"
-            >
-              <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-              {exporting ? 'Exporting...' : 'Export'}
-            </button>
+            <ExportButtons onExport={handleExport} exporting={exporting} disabled={loading || (periods.length === 0 && ledger.length === 0)} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-4">
